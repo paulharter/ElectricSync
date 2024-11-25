@@ -1,4 +1,5 @@
-# electric-sync
+# ElectricSync
+
 Swift client for ElectricSQL
 
 This Package is still a work in progress
