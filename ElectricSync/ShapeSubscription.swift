@@ -76,7 +76,7 @@ public class ShapeSubscription: NSObject{
 
         do {
             print("\nurl: \(url)")
-            var request = URLRequest(url: url)
+            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
             request.httpMethod = "GET"
             
 //            let start = DispatchTime.now()
