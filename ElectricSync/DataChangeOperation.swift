@@ -20,7 +20,7 @@ public class DataChangeOperation: NSObject{
     
     init(table: String, operation: String, key: String, value: [String: Any]) {
         self.table = table
-        self.key = key
+        self.key = String(key.replacingOccurrences(of: "\"", with: "").split(separator: "/").last!)
         self.value = value
         self.operation = operation
         super.init()

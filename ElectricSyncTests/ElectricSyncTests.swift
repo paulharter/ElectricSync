@@ -88,7 +88,7 @@ final class ElectricSyncTests: XCTestCase {
             
             var counter: Int = 0
             
-            for row in cursor {
+            for _ in cursor {
                     counter += 1
             }
             return counter
@@ -111,10 +111,7 @@ final class ElectricSyncTests: XCTestCase {
             print(error)
         }
     }
-    
-    
-    
-    
+
     
     func tearDownTables(_ connection: PostgresClientKit.Connection) {
         do {
@@ -138,16 +135,9 @@ final class ElectricSyncTests: XCTestCase {
     }
 
     func testSubscriptionGetsValues() async throws{
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
 
-        
-        let subscription = ShapeSubscription(table: "projects")
         let subscriber = TestSubscriber()
-        subscription.subscribe(subscriber)
+        let subscription = ShapeSubscription(subscriber: subscriber, table: "projects")
         
         let operationCounter = subscriber.counter
         subscription.start()
@@ -163,6 +153,25 @@ final class ElectricSyncTests: XCTestCase {
         let expected: Set = ["Able", "Baker", "Charlie"]
         XCTAssertTrue(names == expected)
         
+    }
+    
+    
+    func testListSubscriber() throws{
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        let subscriber = ItemListPublisher<TestProject>(table: "projects")
+        var subscription = subscriber.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        var names = Set<String>()
+        for project in subscriber.items {
+            names.insert(project.name)
+        }
+        let expected: Set = ["Able", "Baker", "Charlie"]
+        XCTAssertTrue(names == expected)
     }
 
 }

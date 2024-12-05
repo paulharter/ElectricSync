@@ -15,13 +15,12 @@ public class TestSubscriber: ShapeSubscriber{
     public var values: [String: [String: Any]] = [:]
     public var counter: Int = 0
     
-    func operations(_ dataChangeOperations: [DataChangeOperation]) -> Bool{
+    func operations(_ dataChangeOperations: [DataChangeOperation]){
         
         for operation in dataChangeOperations{
             applyOperation(operation)
         }
         counter += 1
-        return true
     }
     
     func subscriberId() -> String{

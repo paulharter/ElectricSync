@@ -41,9 +41,10 @@
 			membershipExceptions = (
 				constants.swift,
 				DataChangeOperation.swift,
+				ElectricDecodable.swift,
+				ItemListPublisher.swift,
 				ShapeSubscriber.swift,
 				ShapeSubscription.swift,
-				SyncEngine.swift,
 			);
 			target = DAC5BE302CE3A38600E23BE0 /* ElectricSyncTests */;
 		};

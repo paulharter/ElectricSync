@@ -8,7 +8,7 @@
 import Foundation
 
 
-protocol ShapeSubscriber {
-    func operations(_: [DataChangeOperation]) -> Bool
+protocol ShapeSubscriber: AnyObject {
+    func operations(_: [DataChangeOperation])
     func subscriberId() -> String
 }

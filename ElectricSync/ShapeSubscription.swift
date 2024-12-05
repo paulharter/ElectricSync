@@ -20,14 +20,14 @@ public class ShapeSubscription: NSObject{
     private var live: Bool = false
     private var operations: [DataChangeOperation] = []
     private var active: Bool = false
-    private var subscribers: [String:ShapeSubscriber] = [:]
+    private weak var subscriber: ShapeSubscriber?
     
-    
-    init(dbUrl: String = "http://localhost:3000", table: String, whereClause: String? = nil) {
+    init(subscriber: ShapeSubscriber, dbUrl: String = "http://localhost:3000", table: String, whereClause: String? = nil) {
         
         self.table = table
         self.whereClause = whereClause
         self.dbUrl = dbUrl
+        self.subscriber = subscriber
         super.init()
 //        print("dbUrl \(dbUrl)")
     }
@@ -45,26 +45,13 @@ public class ShapeSubscription: NSObject{
         active = false
     }
     
-    
-    func subscribe(_ subscriber: ShapeSubscriber) {
-        subscribers[subscriber.subscriberId()] = subscriber
-    }
-    
-    
-    func unsubscribe(_ subscriber: ShapeSubscriber) {
-        subscribers.removeValue(forKey: subscriber.subscriberId())
-    }
-    
-    
     private func aBadThingHappened(_ message: String){
         print("A bad thing happened: \(message)")
     }
-    
 
     private func refetch() {
         
     }
-    
     
     
     private func request() async {
@@ -76,7 +63,7 @@ public class ShapeSubscription: NSObject{
 
         do {
             print("\nurl: \(url)")
-            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
+            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
             request.httpMethod = "GET"
             
 //            let start = DispatchTime.now()
@@ -98,7 +85,7 @@ public class ShapeSubscription: NSObject{
             print("status: \(httpResponse.statusCode)")
             
             if httpResponse.statusCode == 409 {
-                print("conflict reading Location")
+//                print("conflict reading Location")
                 if let location = headers["Location"] as? String{
                     if let urlComponent = URLComponents(string: location) {
                         let queryItems = urlComponent.queryItems
@@ -133,7 +120,7 @@ public class ShapeSubscription: NSObject{
                 if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
                     for message in json{
                         if let operation = DataChangeOperation(table: table, message: message){
-                            print("\(operation.operation)")
+//                            print("\(operation.operation)")
                             operations.append(operation)
                         }
                     }
@@ -156,19 +143,7 @@ public class ShapeSubscription: NSObject{
     }
     
     private func forwardOperations() {
-        
-        var failedSubscribers: [ShapeSubscriber] = []
-    
-        for (_, subscriber) in subscribers {
-            if !subscriber.operations(operations){
-                failedSubscribers.append(subscriber)
-            }
-        }
-        
-        for failed in failedSubscribers {
-            unsubscribe(failed)
-        }
-        
+        subscriber!.operations(operations)
         operations = []
     }
     
