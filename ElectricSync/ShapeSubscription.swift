@@ -7,30 +7,35 @@
 
 import Foundation
 
-
-public class ShapeSubscription: NSObject{
+public class ShapeSubscription{
     
     private let dbUrl:String
     private let table: String
     private let whereClause: String?
     
-    private var offset: String? = "-1"
-    private var handle: String?
+    private var offset: String
+    public  var handle: String?
     private var cursor: String?
     private var live: Bool = false
     private var operations: [DataChangeOperation] = []
     private var active: Bool = false
     private weak var subscriber: ShapeSubscriber?
     
-    init(subscriber: ShapeSubscriber, dbUrl: String = "http://localhost:3000", table: String, whereClause: String? = nil) {
+    init(subscriber: ShapeSubscriber,
+         dbUrl: String,
+         table: String,
+         whereClause: String? = nil,
+         handle: String? = nil,
+         offset: String = "-1") {
         
         self.table = table
+        self.handle = handle
+        self.offset = offset
         self.whereClause = whereClause
         self.dbUrl = dbUrl
         self.subscriber = subscriber
-        super.init()
-//        print("dbUrl \(dbUrl)")
     }
+    
     
     func start() {
         active = true
@@ -49,10 +54,13 @@ public class ShapeSubscription: NSObject{
         print("A bad thing happened: \(message)")
     }
 
-    private func refetch() {
-        
+    private func refetch(newHandle: String) {
+        handle = newHandle
+        offset = "-1"
+        if let sub = self.subscriber{
+            sub.reset(newHandle)
+        }
     }
-    
     
     private func request() async {
         
@@ -63,7 +71,7 @@ public class ShapeSubscription: NSObject{
 
         do {
             print("\nurl: \(url)")
-            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 6)
             request.httpMethod = "GET"
             
 //            let start = DispatchTime.now()
@@ -79,25 +87,26 @@ public class ShapeSubscription: NSObject{
                 print("Invalid response")
                 return
             }
+            
+            // it might have been paused while waiting
+            if active == false{
+                return
+            }
+
             let headers = httpResponse.allHeaderFields
-            
-            
             print("status: \(httpResponse.statusCode)")
-            
             if httpResponse.statusCode == 409 {
 //                print("conflict reading Location")
                 if let location = headers["Location"] as? String{
                     if let urlComponent = URLComponents(string: location) {
                         let queryItems = urlComponent.queryItems
-                        let newHandle = queryItems?.first(where: { $0.name == "handle" })?.value
-                        if newHandle != nil {
-                            handle = newHandle
+                        if let newHandle = queryItems?.first(where: { $0.name == "handle" })?.value{
+                            refetch(newHandle: newHandle)
                         }
                     }
                 }
                 return
             }
-
 
             if httpResponse.statusCode > 204 {
                 print("Error: \(httpResponse.statusCode)")
@@ -106,16 +115,9 @@ public class ShapeSubscription: NSObject{
 
             if httpResponse.statusCode == 200 {
                 
-                
-                if headers[CTRL_HEADER.MUST_REFETCH] != nil {
-                    refetch()
-                    return
-                }
-                
                 handle = headers[CTRL_HEADER.HANDLE] as? String
-                offset = headers[CTRL_HEADER.OFFSET] as? String
+                offset = (headers[CTRL_HEADER.OFFSET] as? String)!
                 cursor = headers[CTRL_HEADER.CURSOR] as? String
-                
                 
                 if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
                     for message in json{
@@ -132,9 +134,12 @@ public class ShapeSubscription: NSObject{
                 
 
                 if headers[CTRL_HEADER.UP_TO_DATE] != nil {
-                    print("up-to-date")
                     live = true
-                    forwardOperations()
+                    Task {
+                        await MainActor.run { [weak self] in
+                            self?.forwardOperations()
+                        }
+                    }
                 }
             }
         } catch {
@@ -143,7 +148,7 @@ public class ShapeSubscription: NSObject{
     }
     
     private func forwardOperations() {
-        subscriber!.operations(operations)
+        subscriber!.update(operations: operations, handle: handle!, offset: offset)
         operations = []
     }
     
@@ -173,5 +178,4 @@ public class ShapeSubscription: NSObject{
         components?.queryItems = queryItems
         return components?.url
     }
-    
 }

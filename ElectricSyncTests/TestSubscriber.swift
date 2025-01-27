@@ -10,22 +10,23 @@ import Foundation
 
 
 public class TestSubscriber: ShapeSubscriber{
-    
-    private let subId: String = NSUUID().uuidString
+
+
     public var values: [String: [String: Any]] = [:]
     public var counter: Int = 0
     
-    func operations(_ dataChangeOperations: [DataChangeOperation]){
+    func update(operations: [DataChangeOperation], handle: String, offset: String) {
         
-        for operation in dataChangeOperations{
+        for operation in operations{
             applyOperation(operation)
         }
         counter += 1
     }
     
-    func subscriberId() -> String{
-        return subId
+    func reset(_ handle: String) {
+        
     }
+
     
     func applyOperation(_ operation: DataChangeOperation){
         

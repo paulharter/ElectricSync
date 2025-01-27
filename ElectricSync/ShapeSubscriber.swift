@@ -7,8 +7,7 @@
 
 import Foundation
 
-
 protocol ShapeSubscriber: AnyObject {
-    func operations(_: [DataChangeOperation])
-    func subscriberId() -> String
+    func update(operations: [DataChangeOperation], handle: String, offset: String)
+    func reset( _ handle: String)
 }

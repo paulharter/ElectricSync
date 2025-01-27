@@ -7,9 +7,7 @@
 
 import Foundation
 
-
 var OperationNames : Set = ["insert", "update", "delete"]
-
 
 public class DataChangeOperation: NSObject{
     
@@ -38,7 +36,6 @@ public class DataChangeOperation: NSObject{
         if !OperationNames.contains(operation) { return nil }
         
         self.init(table: table, operation: operation, key: String(cleanKey), value: value)
-        
     }
 }
     

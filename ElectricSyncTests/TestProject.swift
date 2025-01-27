@@ -6,26 +6,23 @@
 //
 
 import Foundation
+import SwiftData
 
+@Model
+class TestProject: ElectricModel{
 
-enum DecodeError: Error {
-    case runtimeError(String)
-}
-
-
-struct TestProject: ElectricDecodable, Comparable, Hashable, Identifiable{
     var id: String
     var name: String
+    var shapeHashes: [Int: Int] = [:]
     
-    // ElectricDecodable
-    init(from: [String: Any]) throws {
+    required init(from: [String: Any]) throws {
         guard let id = from["id"] as? String else { throw DecodeError.runtimeError("id is missing")}
         guard let name = from["name"] as? String else { throw DecodeError.runtimeError("name is missing")}
         self.id = id
         self.name = name
     }
-    
-    mutating func update(from: [String: Any]) throws -> Bool {
+
+    func update(from: [String: Any]) throws -> Bool {
         var changed = false
         if let name = from["name"] as? String {
             if self.name != name {

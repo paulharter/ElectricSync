@@ -9,6 +9,24 @@ import XCTest
 @testable import ElectricSync
 
 import PostgresClientKit
+import SwiftData
+
+
+extension Task where Failure == Error {
+    /// Performs an async task in a sync context.
+    ///
+    /// - Note: This function blocks the thread until the given operation is finished. The caller is responsible for managing multithreading.
+    static func synchronous(priority: TaskPriority? = nil, operation: @escaping @Sendable () async throws -> Success) {
+        let semaphore = DispatchSemaphore(value: 0)
+
+        Task(priority: priority) {
+            defer { semaphore.signal() }
+            return try await operation()
+        }
+
+        semaphore.wait()
+    }
+}
 
 
 final class ElectricSyncTests: XCTestCase {
@@ -39,10 +57,10 @@ final class ElectricSyncTests: XCTestCase {
         
         let projectsCount = checkProjects(connection)
         
-        if projectsCount != 3 {
-            clearProjects(connection)
-            addSomeProjects(connection)
-        }
+
+        clearProjects(connection)
+        addSomeProjects(connection)
+        
         
     }
     
@@ -71,9 +89,41 @@ final class ElectricSyncTests: XCTestCase {
             cursor = try statement.execute(parameterValues: [ "Baker" ])
             cursor = try statement.execute(parameterValues: [ "Charlie" ])
             cursor.close()
-            print("hello")
+            print("addSomeProjects")
         } catch {
             print("addSomeProjects failed")
+            print(error)
+        }
+    }
+    
+    func addOneMoreProject(_ connection: PostgresClientKit.Connection) {
+        do {
+            let text = "INSERT INTO projects (name) VALUES ($1)"
+            let statement = try connection.prepareStatement(text: text)
+            defer { statement.close() }
+
+            var cursor = try statement.execute(parameterValues: [ "Easy" ])
+
+            cursor.close()
+            print("addOneMoreProject")
+        } catch {
+            print("addOneMoreProject failed")
+            print(error)
+        }
+    }
+    
+    
+    func changeAProject(_ connection: PostgresClientKit.Connection) {
+        do {
+            let text = "UPDATE projects SET name = $1 WHERE name = 'Able'"
+            let statement = try connection.prepareStatement(text: text)
+            defer { statement.close() }
+
+            var cursor = try statement.execute(parameterValues: [ "Dog" ])
+            cursor.close()
+            print("changeAProject done")
+        } catch {
+            print("changeAProject failed")
             print(error)
         }
     }
@@ -126,6 +176,35 @@ final class ElectricSyncTests: XCTestCase {
             print(error)
         }
     }
+    
+    func deleteShape(handle: String) {
+        
+        var components = URLComponents(string: "http://localhost:3000/v1/shape")
+        components?.queryItems = [ URLQueryItem(name: "handle", value: handle)]
+
+        var request = URLRequest(url: components!.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
+        request.httpMethod = "DELETE"
+        
+        let request2 = request
+
+        
+        Task.synchronous {
+            let (data, response) = try await URLSession.shared.data(for: request2)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Invalid response")
+                return
+            }
+
+            let headers = httpResponse.allHeaderFields
+            print("status: \(httpResponse.statusCode)")
+            if httpResponse.statusCode == 202 {
+                    print("shape deleted sucessfully")
+            }
+        } // 👈 No `await` keyword for calling the `Task.synchronous `
+
+    }
+    
+ 
 
     override func tearDownWithError() throws {
 
@@ -137,7 +216,7 @@ final class ElectricSyncTests: XCTestCase {
     func testSubscriptionGetsValues() async throws{
 
         let subscriber = TestSubscriber()
-        let subscription = ShapeSubscription(subscriber: subscriber, table: "projects")
+        let subscription = ShapeSubscription(subscriber: subscriber, dbUrl: "http://localhost:3000", table: "projects")
         
         let operationCounter = subscriber.counter
         subscription.start()
@@ -151,27 +230,182 @@ final class ElectricSyncTests: XCTestCase {
         }
 
         let expected: Set = ["Able", "Baker", "Charlie"]
+        defer { deleteShape(handle: subscription.handle!)}
         XCTAssertTrue(names == expected)
+        //tidy up
+        
         
     }
     
     
-    func testListSubscriber() throws{
+    @MainActor func testShapeManager() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
-        let subscriber = ItemListPublisher<TestProject>(table: "projects")
-        var subscription = subscriber.objectWillChange.sink { _ in
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()
         }
         
-        wait(for: [expectation], timeout: 10.0)
-        
+        await fulfillment(of: [expectation], timeout: 4.0, enforceOrder: true)
+    
         var names = Set<String>()
-        for project in subscriber.items {
+        for project in publisher.items {
             names.insert(project.name)
         }
         let expected: Set = ["Able", "Baker", "Charlie"]
+        
+        defer { deleteShape(handle: publisher.getHandle()) }
+
+        
+        print("names \(names)")
         XCTAssertTrue(names == expected)
+        
+
+        let query = FetchDescriptor<TestProject>()
+        var values = try context.fetch(query)
+        values.sort()
+        XCTAssertEqual(values.count, 3)
+        XCTAssertEqual(values[0].name, "Able")
+        
+        
+        
+        
     }
+    
+    
+    @MainActor func testShapeManagerGivesSamePublisher() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        let expectation3 = XCTestExpectation(description: "get some projects2")
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher2 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher3 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        var subscription3 = publisher3.objectWillChange.sink { _ in
+            expectation3.fulfill()
+        }
+        
+        await fulfillment(of: [expectation, expectation3], timeout: 4.0, enforceOrder: false)
+        
+        
+        defer {deleteShape(handle: publisher.getHandle())}
+        defer {deleteShape(handle: publisher3.getHandle())}
+
+        XCTAssertEqual(publisher.getHash(), publisher2.getHash())
+        XCTAssertEqual(ObjectIdentifier(publisher), ObjectIdentifier(publisher2))
+        XCTAssertNotEqual(ObjectIdentifier(publisher), ObjectIdentifier(publisher3))
+        
+        var names = Set<String>()
+        for project in publisher3.items {
+            names.insert(project.name)
+        }
+        
+        print("names \(names)")
+        
+        let expected: Set = ["Able"]
+        XCTAssertTrue(names == expected)
+
+        
+    }
+    
+    
+    @MainActor func testChangeRow() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        
+//        var subscription : AnyCancellable
+//        
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+            
+        }
+        
+        await fulfillment(of: [expectation], timeout: 10.0, enforceOrder: false)
+        
+        subscription.cancel()
+        
+        
+        var names = Set<String>()
+        for project in publisher.items {
+            names.insert(project.name)
+        }
+        let expected: Set = ["Able", "Baker", "Charlie"]
+        
+        print("names \(names)")
+        
+        XCTAssertTrue(names == expected)
+        
+        
+        let expectation2 = XCTestExpectation(description: "changes")
+        
+        
+        var subscription2 = publisher.objectWillChange.sink { _ in
+            expectation2.fulfill()
+        }
+        
+        changeAProject(connection!)
+        
+        
+        deleteShape(handle: publisher.getHandle()) 
+        
+        
+        await fulfillment(of: [expectation2], timeout: 10.0, enforceOrder: false)
+        
+        
+        
+        
+        
+        var names2 = Set<String>()
+        for project in publisher.items {
+            names2.insert(project.name)
+        }
+        let expected2: Set = ["Baker", "Charlie", "Dog"]
+        
+        print("names2 \(names2)")
+        
+        XCTAssertTrue(names2 == expected2)
+        
+       
+
+    }
+
+
 
 }
