@@ -37,21 +37,6 @@
 			);
 			target = DAC5BE262CE3A38500E23BE0 /* ElectricSync */;
 		};
-		DAC5BE7E2CE3A46D00E23BE0 /* Exceptions for "ElectricSync" folder in "ElectricSyncTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				constants.swift,
-				DataChangeOperation.swift,
-				ElectricModel.swift,
-				ShapeManager.swift,
-				ShapePublisher.swift,
-				ShapeRecord.swift,
-				ShapeSubscriber.swift,
-				ShapeSubscription.swift,
-				SubscriptionIdentity.swift,
-			);
-			target = DAC5BE302CE3A38600E23BE0 /* ElectricSyncTests */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -59,7 +44,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				DAC5BE392CE3A38600E23BE0 /* Exceptions for "ElectricSync" folder in "ElectricSync" target */,
-				DAC5BE7E2CE3A46D00E23BE0 /* Exceptions for "ElectricSync" folder in "ElectricSyncTests" target */,
 			);
 			path = ElectricSync;
 			sourceTree = "<group>";
@@ -279,6 +263,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
@@ -317,6 +302,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
@@ -465,6 +451,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 63PT2H4G8K;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.uk.glowinthedark.ElectricSyncTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -480,6 +467,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 63PT2H4G8K;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.uk.glowinthedark.ElectricSyncTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";

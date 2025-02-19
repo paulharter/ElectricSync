@@ -187,7 +187,6 @@ final class ElectricSyncTests: XCTestCase {
         
         let request2 = request
 
-        
         Task.synchronous {
             let (data, response) = try await URLSession.shared.data(for: request2)
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -195,12 +194,12 @@ final class ElectricSyncTests: XCTestCase {
                 return
             }
 
-            let headers = httpResponse.allHeaderFields
+//            let headers = httpResponse.allHeaderFields
             print("status: \(httpResponse.statusCode)")
             if httpResponse.statusCode == 202 {
                     print("shape deleted sucessfully")
             }
-        } // 👈 No `await` keyword for calling the `Task.synchronous `
+        }
 
     }
     
@@ -232,9 +231,6 @@ final class ElectricSyncTests: XCTestCase {
         let expected: Set = ["Able", "Baker", "Charlie"]
         defer { deleteShape(handle: subscription.handle!)}
         XCTAssertTrue(names == expected)
-        //tidy up
-        
-        
     }
     
     
@@ -267,20 +263,14 @@ final class ElectricSyncTests: XCTestCase {
         
         defer { deleteShape(handle: publisher.getHandle()) }
 
-        
-        print("names \(names)")
         XCTAssertTrue(names == expected)
-        
 
         let query = FetchDescriptor<TestProject>()
         var values = try context.fetch(query)
         values.sort()
         XCTAssertEqual(values.count, 3)
         XCTAssertEqual(values[0].name, "Able")
-        
-        
-        
-        
+
     }
     
     
@@ -324,13 +314,9 @@ final class ElectricSyncTests: XCTestCase {
         for project in publisher3.items {
             names.insert(project.name)
         }
-        
-        print("names \(names)")
-        
+
         let expected: Set = ["Able"]
         XCTAssertTrue(names == expected)
-
-        
     }
     
     
@@ -367,45 +353,260 @@ final class ElectricSyncTests: XCTestCase {
             names.insert(project.name)
         }
         let expected: Set = ["Able", "Baker", "Charlie"]
-        
-        print("names \(names)")
-        
+
         XCTAssertTrue(names == expected)
         
-        
         let expectation2 = XCTestExpectation(description: "changes")
-        
         
         var subscription2 = publisher.objectWillChange.sink { _ in
             expectation2.fulfill()
         }
         
         changeAProject(connection!)
-        
-        
         deleteShape(handle: publisher.getHandle()) 
-        
-        
+
         await fulfillment(of: [expectation2], timeout: 10.0, enforceOrder: false)
-        
-        
-        
-        
+
         
         var names2 = Set<String>()
         for project in publisher.items {
             names2.insert(project.name)
         }
         let expected2: Set = ["Baker", "Charlie", "Dog"]
-        
-        print("names2 \(names2)")
-        
+
         XCTAssertTrue(names2 == expected2)
         
-       
-
     }
 
+    @MainActor func testShapeIdsMatchmembershipOfPublishedSets() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
+        let expectation = XCTestExpectation(description: "get some projects")
+        let expectation2 = XCTestExpectation(description: "get some projects")
+        let expectation3 = XCTestExpectation(description: "get some projects")
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher2 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Baker'")
+        let publisher3 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
+        
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        var subscription2 = publisher2.objectWillChange.sink { _ in
+            expectation2.fulfill()
+        }
+        
+        var subscription3 = publisher3.objectWillChange.sink { _ in
+            expectation3.fulfill()
+        }
+        
+        // have got all three subscriptions
+         await fulfillment(of: [expectation, expectation2, expectation3], timeout: 4.0, enforceOrder: false)
+        
+        
+        
+        print("handle \(publisher3.getHandle())")
+        
+        assertPublisherNames(publisher: publisher, expectedNames: ["Able", "Baker", "Charlie"])
+        assertPublisherNames(publisher: publisher2, expectedNames: ["Baker"])
+        assertPublisherNames(publisher: publisher3, expectedNames: ["Able"])
+        
+        assertShapeIDsForName(context: context, name: "Able", shapeHashes: [publisher.getHash(), publisher3.getHash()])
+        assertShapeIDsForName(context: context, name: "Baker", shapeHashes: [publisher.getHash(), publisher2.getHash()])
+        assertShapeIDsForName(context: context, name: "Charlie", shapeHashes: [publisher.getHash()])
+        
+        defer {deleteShape(handle: publisher.getHandle())}
+        defer {deleteShape(handle: publisher2.getHandle())}
+        defer {deleteShape(handle: publisher3.getHandle())}
+    }
+    
+    
+    func assertPublisherNames(publisher: ShapePublisher<TestProject>, expectedNames: Set<String>){
+        
+        var names = Set<String>()
+        for project in publisher.items {
+            names.insert(project.name)
+        }
+        
+        print("names: \(names)")
+        print("expectedNames: \(expectedNames)")
+        
+        XCTAssertTrue(names == expectedNames)
+    }
+    
+    func assertShapeIDsForName(context: ModelContext, name: String, shapeHashes: Set<Int>){
+        
+        let query = FetchDescriptor<TestProject>(
+            predicate: #Predicate { $0.name == name }
+        )
+        do{
+            let projects = try context.fetch(query)
+            XCTAssertEqual(projects.count, 1)
+            let project: TestProject = projects[0]
+            print("keys: \(project.shapeHashes.keys)")
+            print("expected: \(shapeHashes)")
+            XCTAssertTrue(Set(project.shapeHashes.keys) == shapeHashes)
+        } catch {
+            XCTFail("couldn't find project")
+        }
+        
 
+    }
+    
+    @MainActor func testPublisherCanReset() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        let expectation2 = XCTestExpectation(description: "get some projects")
+        let expectation3 = XCTestExpectation(description: "get some projects")
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher2 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Baker'")
+        let publisher3 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
+        
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        var subscription2 = publisher2.objectWillChange.sink { _ in
+            expectation2.fulfill()
+        }
+        
+        var subscription3 = publisher3.objectWillChange.sink { _ in
+            expectation3.fulfill()
+        }
+        
+        // have got all three subscriptions
+         await fulfillment(of: [expectation, expectation2, expectation3], timeout: 4.0, enforceOrder: false)
+        
+        
+        
+        // pause them all
+        publisher.pause()
+        publisher2.pause()
+        publisher3.pause()
+    
+
+        assertPublisherNames(publisher: publisher, expectedNames: ["Able", "Baker", "Charlie"])
+        assertPublisherNames(publisher: publisher2, expectedNames: ["Baker"])
+        assertPublisherNames(publisher: publisher3, expectedNames: ["Able"])
+
+        assertShapeIDsForName(context: context, name: "Able", shapeHashes: [publisher.getHash(), publisher3.getHash()])
+        assertShapeIDsForName(context: context, name: "Baker", shapeHashes: [publisher.getHash(), publisher2.getHash()])
+        assertShapeIDsForName(context: context, name: "Charlie", shapeHashes: [publisher.getHash()])
+        
+        
+        publisher.reset("dummy_handle")
+        
+        assertPublisherNames(publisher: publisher, expectedNames: [])
+        assertPublisherNames(publisher: publisher2, expectedNames: ["Baker"])
+        assertPublisherNames(publisher: publisher3, expectedNames: ["Able"])
+
+        assertShapeIDsForName(context: context, name: "Able", shapeHashes: [publisher3.getHash()])
+        assertShapeIDsForName(context: context, name: "Baker", shapeHashes: [publisher2.getHash()])
+
+        defer {deleteShape(handle: publisher.getHandle())}
+        defer {deleteShape(handle: publisher2.getHandle())}
+        do {deleteShape(handle: publisher3.getHandle())}
+    }
+    
+    
+    @MainActor func testShapeHashSaving() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        // have got all three subscriptions
+         await fulfillment(of: [expectation], timeout: 4.0, enforceOrder: false)
+        
+        let before = publisher.getHash()
+        
+        try context.save()
+        let after = publisher.getHash()
+
+        XCTAssertEqual(before, after)
+
+        assertPublisherNames(publisher: publisher, expectedNames: ["Able", "Baker", "Charlie"])
+        do {deleteShape(handle: publisher.getHandle())}
+
+    }
+    
+    
+    @MainActor func testShapeFromCache() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        
+        let container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+//        let urlApp = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).last
+//           let url = urlApp!.appendingPathComponent("default.store")
+//           if FileManager.default.fileExists(atPath: url.path) {
+//               print("swiftdata db at \(url.absoluteString)")
+//           }
+        
+        
+        
+        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        var publisher : ShapePublisher<TestProject>? = try shapeManager.publisher(table: "projects")
+
+        var subscription = publisher!.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        // have got all three subscriptions
+         await fulfillment(of: [expectation], timeout: 4.0, enforceOrder: false)
+        
+        let shapeHash = publisher!.getHash()
+        let shapeHandle = publisher!.getHandle()
+        
+        publisher = nil
+
+        let subscriptionHash: Int = SubscriptionIdentity(dbUrl: "http://localhost:3000", table: "projects", whereClause: nil).hashValue
+
+        let publisher2 = try ShapePublisher<TestProject>(ctx: context, hash: subscriptionHash, dbUrl: "http://localhost:3000", table: "projects", whereClause: nil)
+        
+        XCTAssertEqual(publisher2.items.count, 3)
+        do {deleteShape(handle: shapeHandle)}
+
+    }
 }

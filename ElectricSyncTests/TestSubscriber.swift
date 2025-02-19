@@ -6,6 +6,7 @@
 //
 
 import Foundation
+@testable import ElectricSync
 
 
 
@@ -15,7 +16,7 @@ public class TestSubscriber: ShapeSubscriber{
     public var values: [String: [String: Any]] = [:]
     public var counter: Int = 0
     
-    func update(operations: [DataChangeOperation], handle: String, offset: String) {
+    public func update(operations: [DataChangeOperation], handle: String, offset: String) {
         
         for operation in operations{
             applyOperation(operation)
@@ -23,7 +24,7 @@ public class TestSubscriber: ShapeSubscriber{
         counter += 1
     }
     
-    func reset(_ handle: String) {
+    public func reset(_ handle: String) {
         
     }
 

@@ -11,25 +11,6 @@ import SwiftData
 protocol AnyShapePublisher: AnyObject { }
 
 
-
-func getShapeRecord(ctx: ModelContext, hash: Int) -> ShapeRecord?{
-    let query = FetchDescriptor<ShapeRecord>( predicate: #Predicate { $0.hash == hash })
-
-    do {
-        let values = try ctx.fetch(query)
-        if values.count > 0 {
-            return values[0]
-        } else {
-            let record = ShapeRecord(hash: hash, handle: nil, offset: "-1")
-            ctx.insert(record)
-            return record
-        }
-        
-    } catch {
-        return nil
-    }
-}
-
 enum PublisherError: Error {
     case runtimeError(String)
 }
@@ -45,7 +26,12 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     
     init(ctx: ModelContext, hash: Int, dbUrl: String, table: String, whereClause: String? = nil) throws {
         self.ctx = ctx
-        if let record = getShapeRecord(ctx: ctx, hash: hash){
+        
+        let entityName = Schema.entityName(for: T.self)
+        
+        print("entityName \(entityName)")
+        
+        if let record = getShapeRecord(ctx: ctx, hash: hash, modelName: entityName){
             self.shapeRecord = record
             self.subscription = ShapeSubscription(subscriber: self,
                                                   dbUrl: dbUrl,
@@ -54,24 +40,33 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
                                                   handle: self.shapeRecord.handle,
                                                   offset: self.shapeRecord.offset)
             self.initialiseFromCache()
-            self.subscription!.start()
+            self.shapeRecord.lastUse = Date()
         } else {
             throw PublisherError.runtimeError("no Shape Record")
         }
     }
     
     deinit {
+        print("deinit")
         self.subscription!.pause()
+        self.shapeRecord.lastUse = Date()
         do {
             try ctx.save()
-        } catch {
-            //TODO ??
+        } catch let error {
+            print("deinit save failed \(error)")
         }
     }
     
+    func start(){
+        self.subscription!.start()
+    }
+    
+    func pause() {
+        self.subscription!.pause()
+    }
     
     func getHash() -> Int {
-        return self.shapeRecord.hash
+        return self.shapeRecord.shapeHash
     }
     
     func getHandle() -> String {
@@ -80,21 +75,23 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     
     //protocol ShapeSubscriber
     func reset( _ handle: String){
-        let hash: Int = shapeRecord.hash
-        let query = FetchDescriptor<T>( predicate: #Predicate {item in item.shapeHashes[hash] == 1 })
         
-        do {
-            let values = try self.ctx.fetch(query)
-            
-            for var obj in values{
+        let keys = Array(self.data.keys)
+        
+        for k in keys {
+            if var obj = self.data[k]{
                 remove(&obj)
             }
-            
-            self.shapeRecord.offset = "-1"
-            self.shapeRecord.handle = handle
+        }
+        
+        self.shapeRecord.offset = "-1"
+        self.shapeRecord.handle = handle
+        self.items = []
+        
+        do {
             try ctx.save()
-        } catch {
-            //TODO ??
+        } catch let error{
+            print("reset failed \(error)")
         }
     }
     
@@ -115,7 +112,6 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
             var values = Array(data.values)
             values.sort()
             items = values
-            print("CHANGED 2 \(changed)")
             state += 1
         }
         
@@ -125,15 +121,21 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     
     
     private func initialiseFromCache(){
-        let hash: Int = shapeRecord.hash
-        let query = FetchDescriptor<T>( predicate: #Predicate { item in item.shapeHashes[hash] == 1 })
-        
+        let query = FetchDescriptor<T>()
+
         do {
-            var values = try self.ctx.fetch(query)
+            var objs = try self.ctx.fetch(query)
+            for obj in objs {
+                if obj.shapeHashes.keys.contains(self.shapeRecord.shapeHash){
+                    self.data[obj.id] = obj
+                }
+            }
+            var values = Array(data.values)
             values.sort()
             items = values
-        } catch {
-            //TODO ??
+            state += 1
+        } catch let error{
+            print("initialiseFromCache error \(error)")
         }
     }
     
@@ -182,7 +184,7 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
             
             let changed = try obj.update(from: operation.value)
             print("CHANGED \(changed)")
-            self.ensureShapeHash(hash: self.shapeRecord.hash, obj: &obj)
+            self.ensureShapeHash(hash: self.shapeRecord.shapeHash, obj: &obj)
             
             if !data.keys.contains(operation.key){
                 data[operation.key] = obj
@@ -192,7 +194,7 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
             }
         } else {
             var obj = try T.init(from: operation.value)
-            self.ensureShapeHash(hash: self.shapeRecord.hash, obj: &obj)
+            self.ensureShapeHash(hash: self.shapeRecord.shapeHash, obj: &obj)
             data[operation.key] = obj
             ctx.insert(obj)
             return true
@@ -202,8 +204,8 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     
     private func remove(_ obj: inout T){
         data.removeValue(forKey: obj.id)
-        obj.shapeHashes.removeValue(forKey: self.shapeRecord.hash)
-        
+        obj.shapeHashes.removeValue(forKey: self.shapeRecord.shapeHash)
+
         if obj.shapeHashes.count == 0 {
             ctx.delete(obj)
         }
@@ -212,5 +214,6 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     
     private func ensureShapeHash(hash: Int, obj: inout T){
        obj.shapeHashes[hash] = 1
+
     }
 }

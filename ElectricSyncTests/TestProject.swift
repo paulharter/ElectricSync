@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+@testable import ElectricSync
 
 @Model
 class TestProject: ElectricModel{

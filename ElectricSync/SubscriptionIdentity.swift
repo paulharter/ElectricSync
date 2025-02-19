@@ -20,14 +20,14 @@ struct SubscriptionIdentity: Hashable {
     
     static func ==(lhs: SubscriptionIdentity, rhs: SubscriptionIdentity) -> Bool {
         if (lhs.whereClause == nil) {
-            if (lhs.whereClause == nil) {
+            if (rhs.whereClause == nil) {
                 return lhs.dbUrl == rhs.dbUrl && lhs.table == rhs.table
             } else {
                 return false
             }
             
         } else {
-            if (lhs.whereClause == nil) {
+            if (rhs.whereClause == nil) {
                 return false
             } else {
                 return lhs.dbUrl == rhs.dbUrl && lhs.table == rhs.table && lhs.whereClause == rhs.whereClause

@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 
+
 enum DecodeError: Error {
     case runtimeError(String)
 }
