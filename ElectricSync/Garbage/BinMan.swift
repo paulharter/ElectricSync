@@ -15,10 +15,11 @@ protocol Collector {
 class BinMan<T: PersistentModel & ElectricModel>: Collector{
 
     func empty(shapeHash: Int, ctx: ModelContext){
+        
         let query = FetchDescriptor<T>()
 
         do {
-            let objs = try ctx.fetch(query, batchSize: 1000)
+            let objs = try ctx.fetch(query)
             for var obj in objs {
                 if obj.shapeHashes.keys.contains(shapeHash){
                     obj.shapeHashes.removeValue(forKey: shapeHash)
