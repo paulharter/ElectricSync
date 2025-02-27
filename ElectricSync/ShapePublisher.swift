@@ -22,14 +22,13 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     var data: [String: T] = [:]
     private var subscription: ShapeSubscription?
     private var ctx: ModelContext
-    private var shapeRecord: ShapeRecord
+    var delegate: ShapePublisherDelegate?
+    var shapeRecord: ShapeRecord
     
     init(ctx: ModelContext, hash: Int, dbUrl: String, table: String, whereClause: String? = nil) throws {
         self.ctx = ctx
         
         let entityName = Schema.entityName(for: T.self)
-        
-        print("entityName \(entityName)")
         
         if let record = getShapeRecord(ctx: ctx, hash: hash, modelName: entityName){
             self.shapeRecord = record
@@ -117,6 +116,9 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
         
         self.shapeRecord.handle = handle
         self.shapeRecord.offset = offset
+        if let d = self.delegate{
+            d.garbageCollect()
+        }
     }
     
     

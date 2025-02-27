@@ -10,6 +10,7 @@ import XCTest
 
 import PostgresClientKit
 import SwiftData
+import _SwiftData_SwiftUI
 
 
 extension Task where Failure == Error {
@@ -576,13 +577,12 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-//        let urlApp = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).last
-//           let url = urlApp!.appendingPathComponent("default.store")
-//           if FileManager.default.fileExists(atPath: url.path) {
-//               print("swiftdata db at \(url.absoluteString)")
-//           }
         
-        
+        let urlApp = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).last
+           let url = urlApp!.appendingPathComponent("default.store")
+           if FileManager.default.fileExists(atPath: url.path) {
+               print("swiftdata db at \(url.absoluteString)")
+           }
         
         let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
@@ -607,6 +607,81 @@ final class ElectricSyncTests: XCTestCase {
         
         XCTAssertEqual(publisher2.items.count, 3)
         do {deleteShape(handle: shapeHandle)}
+    }
+    
+    
+    @MainActor func testGC() async throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: false)
+        
+        var container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        container.deleteAllData()
+        
+        container = try ModelContainer(for:
+            TestProject.self,
+            ShapeRecord.self,
+            configurations: configuration
+        )
+        
+        let context = container.mainContext
+        
+        let shapeManager = ShapeManager(for: TestProject.self,
+                                        context: context,
+                                        dbUrl: "http://localhost:3000",
+                                        bytesLimit: 234000,
+                                        timeLimit:  TimeInterval(0.5) )
+        
+        shapeManager.garbageCollector.calcFilePaths()
+        let sizeBefore = shapeManager.garbageCollector.dbSize()
+        print("DB size: \(sizeBefore)")
+        
+        XCTAssertTrue(sizeBefore > 119000)
+        XCTAssertTrue(sizeBefore < 120000)
+                                
+        let expectation = XCTestExpectation(description: "get some projects")
+        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
 
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        // have got all three subscriptions
+         await fulfillment(of: [expectation], timeout: 4.0, enforceOrder: false)
+    
+        assertPublisherNames(publisher: publisher, expectedNames: ["Able", "Baker", "Charlie"])
+        
+        do{
+            try context.save()
+//            try context.parentContext.save()
+        } catch {}
+        
+        shapeManager.garbageCollector.calcFilePaths()
+        let sizeAfter = shapeManager.garbageCollector.dbSize()
+        
+        print("DB size: \(sizeAfter)")
+        
+        XCTAssertTrue(sizeAfter > 234000)
+        XCTAssertTrue(sizeAfter < 235000)
+        
+        let purged = shapeManager.garbageCollector.purgeOldestShape(activeShapeHashes: [publisher.shapeRecord.shapeHash])
+        
+        XCTAssertEqual(purged, false)
+        
+        
+        let purged2 = shapeManager.garbageCollector.purgeOldestShape(activeShapeHashes: [])
+        
+        XCTAssertEqual(purged2, false)
+        
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        
+        let purged3 = shapeManager.garbageCollector.purgeOldestShape(activeShapeHashes: [])
+        
+        XCTAssertEqual(purged3, true)
+        
+        do {deleteShape(handle: publisher.getHandle())}
     }
 }

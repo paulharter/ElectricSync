@@ -19,4 +19,3 @@ protocol ElectricModel: Comparable & Hashable & Identifiable{
     var shapeHashes :  [Int: Int] { get set }
     var id : String { get }
 }
-
