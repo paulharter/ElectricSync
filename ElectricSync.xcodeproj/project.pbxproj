@@ -8,8 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		DA14F13B2CE612530036F290 /* PostgresClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = DA14F13A2CE612530036F290 /* PostgresClientKit */; };
+		DA4C4B8D2D417C2800A83335 /* Echo in Frameworks */ = {isa = PBXBuildFile; productRef = DA4C4B8C2D417C2800A83335 /* Echo */; };
 		DAB6DA242CF4878400A341A9 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = DAB6DA232CF4878400A341A9 /* README.md */; };
 		DAC5BE322CE3A38600E23BE0 /* ElectricSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DAC5BE272CE3A38500E23BE0 /* ElectricSync.framework */; };
+		DAF80D512D7B28CD009203EB /* ephemeral.md in Resources */ = {isa = PBXBuildFile; fileRef = DAF80D502D7B28BF009203EB /* ephemeral.md */; };
+		DAF80D552D7B2BAB009203EB /* persistent.md in Resources */ = {isa = PBXBuildFile; fileRef = DAF80D542D7B2B9D009203EB /* persistent.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -26,6 +29,8 @@
 		DAB6DA232CF4878400A341A9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		DAC5BE272CE3A38500E23BE0 /* ElectricSync.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ElectricSync.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAC5BE312CE3A38600E23BE0 /* ElectricSyncTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ElectricSyncTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DAF80D502D7B28BF009203EB /* ephemeral.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ephemeral.md; sourceTree = "<group>"; };
+		DAF80D542D7B2B9D009203EB /* persistent.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = persistent.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,18 +41,6 @@
 			);
 			target = DAC5BE262CE3A38500E23BE0 /* ElectricSync */;
 		};
-		DAC5BE7E2CE3A46D00E23BE0 /* Exceptions for "ElectricSync" folder in "ElectricSyncTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				constants.swift,
-				DataChangeOperation.swift,
-				ElectricDecodable.swift,
-				ItemListPublisher.swift,
-				ShapeSubscriber.swift,
-				ShapeSubscription.swift,
-			);
-			target = DAC5BE302CE3A38600E23BE0 /* ElectricSyncTests */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -55,7 +48,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				DAC5BE392CE3A38600E23BE0 /* Exceptions for "ElectricSync" folder in "ElectricSync" target */,
-				DAC5BE7E2CE3A46D00E23BE0 /* Exceptions for "ElectricSync" folder in "ElectricSyncTests" target */,
 			);
 			path = ElectricSync;
 			sourceTree = "<group>";
@@ -72,6 +64,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA4C4B8D2D417C2800A83335 /* Echo in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +83,8 @@
 		DAC5BE1D2CE3A38500E23BE0 = {
 			isa = PBXGroup;
 			children = (
+				DAF80D542D7B2B9D009203EB /* persistent.md */,
+				DAF80D502D7B28BF009203EB /* ephemeral.md */,
 				DAB6DA232CF4878400A341A9 /* README.md */,
 				DAC5BE292CE3A38500E23BE0 /* ElectricSync */,
 				DAC5BE352CE3A38600E23BE0 /* ElectricSyncTests */,
@@ -137,6 +132,7 @@
 			);
 			name = ElectricSync;
 			packageProductDependencies = (
+				DA4C4B8C2D417C2800A83335 /* Echo */,
 			);
 			productName = ElectricSync;
 			productReference = DAC5BE272CE3A38500E23BE0 /* ElectricSync.framework */;
@@ -195,6 +191,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				DA14F1392CE612530036F290 /* XCRemoteSwiftPackageReference "PostgresClientKit" */,
+				DA4C4B8B2D417C2800A83335 /* XCRemoteSwiftPackageReference "Echo" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DAC5BE282CE3A38500E23BE0 /* Products */;
@@ -212,6 +209,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DAF80D552D7B2BAB009203EB /* persistent.md in Resources */,
+				DAF80D512D7B28CD009203EB /* ephemeral.md in Resources */,
 				DAB6DA242CF4878400A341A9 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -272,6 +271,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
@@ -310,6 +310,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
@@ -458,6 +459,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 63PT2H4G8K;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.uk.glowinthedark.ElectricSyncTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -473,6 +475,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 63PT2H4G8K;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.uk.glowinthedark.ElectricSyncTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -522,6 +525,14 @@
 				kind = branch;
 			};
 		};
+		DA4C4B8B2D417C2800A83335 /* XCRemoteSwiftPackageReference "Echo" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Azoy/Echo";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -529,6 +540,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DA14F1392CE612530036F290 /* XCRemoteSwiftPackageReference "PostgresClientKit" */;
 			productName = PostgresClientKit;
+		};
+		DA4C4B8C2D417C2800A83335 /* Echo */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4C4B8B2D417C2800A83335 /* XCRemoteSwiftPackageReference "Echo" */;
+			productName = Echo;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

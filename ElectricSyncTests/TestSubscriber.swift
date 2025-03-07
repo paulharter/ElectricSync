@@ -6,26 +6,32 @@
 //
 
 import Foundation
+@testable import ElectricSync
 
 
 
-public class TestSubscriber: ShapeSubscriber{
+public class TestSubscriber: ShapeStreamSubscriber{
+    public func onError(_ error: any Error) {
+        
+    }
     
-    private let subId: String = NSUUID().uuidString
+
+
     public var values: [String: [String: Any]] = [:]
     public var counter: Int = 0
     
-    func operations(_ dataChangeOperations: [DataChangeOperation]){
+    public func update(operations: [DataChangeOperation], handle: String, offset: String) {
         
-        for operation in dataChangeOperations{
+        for operation in operations{
             applyOperation(operation)
         }
         counter += 1
     }
     
-    func subscriberId() -> String{
-        return subId
+    public func reset(_ handle: String) {
+        
     }
+
     
     func applyOperation(_ operation: DataChangeOperation){
         

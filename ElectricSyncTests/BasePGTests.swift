@@ -1,21 +1,23 @@
 //
-//  ElectricSyncTests.swift
-//  ElectricSyncTests
+//  BasePGTests.swift
+//  ElectricSync
 //
-//  Created by Paul Harter on 12/11/2024.
+//  Created by Paul Harter on 05/03/2025.
 //
 
 import XCTest
 @testable import ElectricSync
 
 import PostgresClientKit
+import SwiftData
+import _SwiftData_SwiftUI
 
 
-final class ElectricSyncTests: XCTestCase {
+class BasePGTests: XCTestCase {
     
-    private var connection: PostgresClientKit.Connection?
+    var connection: PostgresClientKit.Connection?
     
-
+    
     override func setUpWithError() throws {
         var configuration = PostgresClientKit.ConnectionConfiguration()
         configuration.host = "localhost"
@@ -39,10 +41,10 @@ final class ElectricSyncTests: XCTestCase {
         
         let projectsCount = checkProjects(connection)
         
-        if projectsCount != 3 {
-            clearProjects(connection)
-            addSomeProjects(connection)
-        }
+        
+        clearProjects(connection)
+        addSomeProjects(connection)
+        
         
     }
     
@@ -51,7 +53,7 @@ final class ElectricSyncTests: XCTestCase {
             let text = "CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, name varchar(255));"
             let statement = try connection.prepareStatement(text: text)
             defer { statement.close() }
-
+            
             let cursor = try statement.execute()
             cursor.close()
         } catch {
@@ -63,24 +65,56 @@ final class ElectricSyncTests: XCTestCase {
     
     func addSomeProjects(_ connection: PostgresClientKit.Connection) {
         do {
-            let text = "INSERT INTO projects (name) VALUES ($1)"
+            let text = "INSERT INTO projects (name) VALUES ($1);"
             let statement = try connection.prepareStatement(text: text)
             defer { statement.close() }
-
+            
             var cursor = try statement.execute(parameterValues: [ "Able" ])
             cursor = try statement.execute(parameterValues: [ "Baker" ])
             cursor = try statement.execute(parameterValues: [ "Charlie" ])
             cursor.close()
-            print("hello")
+            print("addSomeProjects")
         } catch {
             print("addSomeProjects failed")
             print(error)
         }
     }
     
+    func addOneMoreProject(_ connection: PostgresClientKit.Connection) {
+        do {
+            let text = "INSERT INTO projects (name) VALUES ($1);"
+            let statement = try connection.prepareStatement(text: text)
+            defer { statement.close() }
+            
+            var cursor = try statement.execute(parameterValues: [ "Easy" ])
+            
+            cursor.close()
+            print("addOneMoreProject")
+        } catch {
+            print("addOneMoreProject failed")
+            print(error)
+        }
+    }
+    
+    
+    func changeAProject(_ connection: PostgresClientKit.Connection) {
+        do {
+            let text = "UPDATE projects SET name = $1 WHERE name = 'Able';"
+            let statement = try connection.prepareStatement(text: text)
+            defer { statement.close() }
+            
+            var cursor = try statement.execute(parameterValues: [ "Dog" ])
+            cursor.close()
+            print("changeAProject done")
+        } catch {
+            print("changeAProject failed")
+            print(error)
+        }
+    }
+    
     func checkProjects(_ connection: PostgresClientKit.Connection) -> Int {
         do {
-            let text = "SELECT * FROM projects"
+            let text = "SELECT * FROM projects;"
             let statement = try connection.prepareStatement(text: text)
             defer { statement.close() }
             let cursor = try statement.execute()
@@ -89,7 +123,7 @@ final class ElectricSyncTests: XCTestCase {
             var counter: Int = 0
             
             for _ in cursor {
-                    counter += 1
+                counter += 1
             }
             return counter
         } catch {
@@ -101,7 +135,7 @@ final class ElectricSyncTests: XCTestCase {
     
     func clearProjects(_ connection: PostgresClientKit.Connection){
         do {
-            let text = "TRUNCATE TABLE projects"
+            let text = "TRUNCATE TABLE projects;"
             let statement = try connection.prepareStatement(text: text)
             defer { statement.close() }
             let cursor = try statement.execute()
@@ -111,14 +145,14 @@ final class ElectricSyncTests: XCTestCase {
             print(error)
         }
     }
-
+    
     
     func tearDownTables(_ connection: PostgresClientKit.Connection) {
         do {
             let text = "DROP TABLE projects;"
             let statement = try connection.prepareStatement(text: text)
             defer { statement.close() }
-
+            
             let cursor = try statement.execute()
             cursor.close()
         } catch {
@@ -126,52 +160,39 @@ final class ElectricSyncTests: XCTestCase {
             print(error)
         }
     }
-
-    override func tearDownWithError() throws {
-
-        guard let c = connection else { return }
-//        tearDownTables(c)
-        c.close()
-    }
-
-    func testSubscriptionGetsValues() async throws{
-
-        let subscriber = TestSubscriber()
-        let subscription = ShapeSubscription(subscriber: subscriber, table: "projects")
+    
+    func deleteShape(handle: String) {
         
-        let operationCounter = subscriber.counter
-        subscription.start()
-        try await subscriber.waitForNextUpdate(operationCounter)
-        subscription.pause()
+        var components = URLComponents(string: "http://localhost:3000/v1/shape")
+        components?.queryItems = [ URLQueryItem(name: "handle", value: handle)]
         
-        var names = Set<String>()
+        var request = URLRequest(url: components!.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
+        request.httpMethod = "DELETE"
         
-        for (_, v) in subscriber.values {
-            names.insert(v["name"] as! String)
+        let request2 = request
+        
+        Task.synchronous {
+            let (data, response) = try await URLSession.shared.data(for: request2)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Invalid response")
+                return
+            }
+            
+            //            let headers = httpResponse.allHeaderFields
+            print("status: \(httpResponse.statusCode)")
+            if httpResponse.statusCode == 202 {
+                print("shape deleted sucessfully")
+            }
         }
-
-        let expected: Set = ["Able", "Baker", "Charlie"]
-        XCTAssertTrue(names == expected)
         
     }
     
     
-    func testListSubscriber() throws{
-
-        let expectation = XCTestExpectation(description: "get some projects")
-        let subscriber = ItemListPublisher<TestProject>(table: "projects")
-        var subscription = subscriber.objectWillChange.sink { _ in
-            expectation.fulfill()
-        }
-        
-        wait(for: [expectation], timeout: 10.0)
-        
-        var names = Set<String>()
-        for project in subscriber.items {
-            names.insert(project.name)
-        }
-        let expected: Set = ["Able", "Baker", "Charlie"]
-        XCTAssertTrue(names == expected)
-    }
-
+    
+//    override func tearDownWithError() throws {
+//        
+//        guard let c = connection else { return }
+////        tearDownTables(c)
+//        c.close()
+//    }
 }

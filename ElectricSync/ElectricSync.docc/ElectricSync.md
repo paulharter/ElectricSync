@@ -1,13 +1,28 @@
-# ``ElectricSync``
+# ElectricSync
 
-<!--@START_MENU_TOKEN@-->Summary<!--@END_MENU_TOKEN@-->
+A Swift client for ElectricSQL
 
-## Overview
+You can subscribe to Shapes from ElectricSQL using ElectricSync's ShapePublishers.
 
-<!--@START_MENU_TOKEN@-->Text<!--@END_MENU_TOKEN@-->
+There are two flavours of `ShapePublisher` that both read from a `ShapeStream`
 
-## Topics
+- `EphemeralShapePublisher` 
+- `PersistentShapePublisher`
 
-### <!--@START_MENU_TOKEN@-->Group<!--@END_MENU_TOKEN@-->
+The Ephemeral version is more light weight and less resource hungry, but the persistent one gives you offline reads of cached data.
 
-- <!--@START_MENU_TOKEN@-->``Symbol``<!--@END_MENU_TOKEN@-->
+
+The `EphemeralShapePublisher` has an in-memory array called `items` which is kept in sync with your shape for the lifetime of the publisher. 
+
+```
+public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, ShapeStreamSubscriber{
+
+    @Published public var items: [T] = []
+    
+    ...
+}
+```
+
+The `PersistentShapePublisher` has the same in memory array but also saves it into SwiftData and keeps track of the Shape's offset so that it can resume from where it left off without relaoding the data and gives you offline reading of the data.
+
+The `PersistentShapePublisher` also has a garbage collector that cleans up old unused shapes.
