@@ -30,9 +30,4 @@ struct TestProject2: ElectricModel{
         }
         return changed
     }
-    
-    // Comparable
-    static func <(lhs: TestProject2, rhs: TestProject2) -> Bool {
-            return lhs.name < rhs.name
-    }
 }

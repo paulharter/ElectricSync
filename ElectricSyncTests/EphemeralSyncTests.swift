@@ -41,6 +41,28 @@ final class EphemeralSyncTests: BasePGTests {
     }
     
     
+    func testGetsValuesSorted() async throws {
+
+        let shapeManager = EphemeralShapeManager(dbUrl: "http://localhost:3000")
+
+        let expectation = XCTestExpectation(description: "get some projects")
+        let publisher : EphemeralShapePublisher<TestProject2> = shapeManager.publisher(table: "projects",
+                                                                                       sort: { one, two in
+            return one.name > two.name
+        })
+        var subscription = publisher.objectWillChange.sink { _ in
+            expectation.fulfill()
+        }
+        
+        await fulfillment(of: [expectation], timeout: 4.0, enforceOrder: true)
+    
+        defer { deleteShape(handle: publisher.getHandle()) }
+
+        XCTAssertTrue(publisher.items[0].name == "Charlie")
+    }
+    
+    
+    
     func testShapeManagerGivesSamePublisher() async throws {
         
         let shapeManager = EphemeralShapeManager(dbUrl: "http://localhost:3000")

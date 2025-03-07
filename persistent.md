@@ -10,7 +10,7 @@ Define your object type, it should be a class that uses the SwiftData @Model mac
 This the same as the `ElectricModel` protocol but with the additional shapeHashes that are used by the Garbage Collector.
 
 ```swift
-public protocol ElectricModel: Comparable & Hashable & Identifiable{
+public protocol ElectricModel: Hashable & Identifiable{
     init(from: [String: Any]) throws
     mutating func update(from: [String: Any]) throws -> Bool
     var id : String { get }
@@ -22,8 +22,6 @@ public protocol PersistentElectricModel: ElectricModel{
 ```
 
 You have to implement the init and update methods, these handle insert and update operations from Electric, giving you a `[String: Any]` holding the data.
-
-You must also implement `<` to conform to Swift's built in `Comparable` this is not really part of Electric but is used by the publishers to order the list they maintain.
 
 for example:
 
@@ -52,11 +50,6 @@ class Project: PersistentElectricModel{
         }
         return changed
     }
-    
-    // Comparable
-    static func <(lhs: Project, rhs: Project) -> Bool {
-            return lhs.name < rhs.name
-    }
 }
 ```
 
@@ -72,7 +65,7 @@ And then use this to create a `PersistentShapeManager` in your App giving it the
 
 You can also optionally modify the default behaviour of the ElectricSync `GarbageCollector` by giving values for 
 
-And from the `PersistentShapeManager` create an `PersistentShapePublisher` for the table you want (optionally with a where clause) and pass it into a View to use.
+And from the `PersistentShapeManager` create an `PersistentShapePublisher` for the table you want (optionally with a where clause and sort function) and pass it into a View to use.
 
 You can pass it the `PersistentShapeManager` down to other views as an `environmentObject` so they can create other `PersistentShapePublisher` as needed
 

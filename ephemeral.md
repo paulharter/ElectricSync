@@ -8,7 +8,7 @@ The `EphemeralShapePublisher" keeps an array in memory in sync with your shape f
 Define your object type, it should be a struct that conform to the 'ElectricModel' protocol:
 
 ```swift
-protocol ElectricModel: Comparable & Hashable & Identifiable{
+protocol ElectricModel: Hashable & Identifiable{
     init(from: [String: Any]) throws
     mutating func update(from: [String: Any]) throws -> Bool
     var id : String { get }
@@ -16,8 +16,6 @@ protocol ElectricModel: Comparable & Hashable & Identifiable{
 ```
 
 You have to implement the init and update methods, these handle insert and update operations from Electric, giving you a `[String: Any]` holding the data.
-
-You must also implement `<` to conform to Swift's built in `Comparable` this is not really part of Electric but is used by the publishers to order the list they maintain.
 
 for example:
 
@@ -44,18 +42,13 @@ struct Project: ElectricModel{
         }
         return changed
     }
-    
-    // Comparable
-    static func <(lhs: Project, rhs: Project) -> Bool {
-            return lhs.name < rhs.name
-    }
 }
 
 ```
 
 Next create a `EphemeralShapeManager` in your App giving it the url of your Electric.
 
-And from the `EphemeralShapeManager` create an `EphemeralShapePublisher` for the table you want (optionally with a where clause) and pass it into a View to use.
+And from the `EphemeralShapeManager` create an `EphemeralShapePublisher` for the table you want (optionally with a where clause and sort function) and pass it into a View to use.
 
 You can pass it the `EphemeralShapeManager` down to other views as an `environmentObject` so they can create other `EphemeralShapePublisher` as needed
 
@@ -71,7 +64,9 @@ struct MyApp: App {
     
     init() {
         self.shapeManager = EphemeralShapeManager(dbUrl: "http://127.0.0.1:3000")
-        self.projectsPublisher = self.shapeManager!.publisher(table: "projects")
+        self.projectsPublisher = self.shapeManager!.publisher(table: "projects", sort: { one, two in
+            return one.name > two.name
+        })
     }
     
     var body: some Scene {

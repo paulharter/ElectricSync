@@ -26,9 +26,17 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
     private var ctx: ModelContext
     var delegate: PersistentShapePublisherDelegate?
     var shapeRecord: ShapeRecord
+    private var sort: ((T, T) throws -> Bool)?
     
-    public init(session: URLSession, ctx: ModelContext, hash: Int, dbUrl: String, table: String, whereClause: String? = nil) throws {
+    public init(session: URLSession,
+                ctx: ModelContext,
+                hash: Int,
+                dbUrl: String,
+                table: String,
+                whereClause: String? = nil,
+                sort: ((T, T) throws -> Bool)? = nil) throws {
         self.ctx = ctx
+        self.sort = sort
         
         let entityName = Schema.entityName(for: T.self)
         
@@ -115,9 +123,18 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         }
         
         if changed {
-            var values = Array(data.values)
-            values.sort()
-            items = values
+            let values = Array(data.values)
+            if let s = self.sort {
+                do {
+                    items = try values.sorted(by: s)
+                } catch let err{
+                    print("sort failed \(err)")
+                    items = values
+                }
+            } else {
+                items = values
+            }
+            
             state += 1
         }
         
@@ -144,9 +161,17 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
                     self.data[obj.id] = obj
                 }
             }
-            var values = Array(data.values)
-            values.sort()
-            items = values
+            let values = Array(data.values)
+            if let s = self.sort {
+                do {
+                    items = try values.sorted(by: s)
+                } catch let err{
+                    print("sort failed \(err)")
+                    items = values
+                }
+            } else {
+                items = values
+            }
             state += 1
         } catch let err{
             print("initialiseFromCache error \(err)")

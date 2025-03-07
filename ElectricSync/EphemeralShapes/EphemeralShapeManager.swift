@@ -13,6 +13,7 @@ public class EphemeralShapeManager: ObservableObject{
     private var publishers: [Int: WeakBox<AnyObject>] = [:]
     private var session: URLSession
     
+    
     public init(dbUrl: String) {
         self.dbUrl = dbUrl
         let config = URLSessionConfiguration.default
@@ -22,7 +23,9 @@ public class EphemeralShapeManager: ObservableObject{
         self.session = URLSession(configuration: config)
     }
     
-    public func publisher<T: ElectricModel >(table: String, whereClause: String? = nil) -> EphemeralShapePublisher<T> {
+    public func publisher<T: ElectricModel >(table: String,
+                                             whereClause: String? = nil,
+                                             sort: ((T, T) throws -> Bool)? = nil) -> EphemeralShapePublisher<T> {
         
         let shapeHash: Int = ShapeIdentity(dbUrl: self.dbUrl, table: table, whereClause: whereClause).hashValue
   

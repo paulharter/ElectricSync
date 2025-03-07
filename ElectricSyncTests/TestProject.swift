@@ -33,9 +33,4 @@ class TestProject: PersistentElectricModel{
         }
         return changed
     }
-    
-    // Comparable
-    static func <(lhs: TestProject, rhs: TestProject) -> Bool {
-            return lhs.name < rhs.name
-    }
 }

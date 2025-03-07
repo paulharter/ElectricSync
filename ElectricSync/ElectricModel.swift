@@ -17,7 +17,7 @@ public enum StreamError: Error {
     case runtimeError(String)
 }
 
-public protocol ElectricModel: Comparable & Hashable & Identifiable{
+public protocol ElectricModel: Hashable & Identifiable{
     init(from: [String: Any]) throws
     mutating func update(from: [String: Any]) throws -> Bool
     var id : String { get }
