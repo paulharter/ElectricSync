@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class ShapeSubscription{
+public class ShapeStream{
     
     private let dbUrl:String
     private let table: String
@@ -19,9 +19,11 @@ public class ShapeSubscription{
     private var live: Bool = false
     private var operations: [DataChangeOperation] = []
     private var active: Bool = false
-    private weak var subscriber: ShapeSubscriber?
+    private weak var subscriber: ShapeStreamSubscriber?
+    private var session: URLSession
     
-    init(subscriber: ShapeSubscriber,
+    init(session: URLSession,
+         subscriber: ShapeStreamSubscriber,
          dbUrl: String,
          table: String,
          whereClause: String? = nil,
@@ -29,6 +31,7 @@ public class ShapeSubscription{
          offset: String = "-1") {
         
         self.table = table
+        self.session = session
         self.handle = handle
         self.offset = offset
         self.whereClause = whereClause
@@ -51,7 +54,8 @@ public class ShapeSubscription{
     }
     
     private func aBadThingHappened(_ message: String){
-        print("A bad thing happened: \(message)")
+        self.pause()
+        self.subscriber?.onError(StreamError.runtimeError(message))
     }
 
     private func refetch(newHandle: String) {
@@ -70,21 +74,21 @@ public class ShapeSubscription{
         }
 
         do {
-            print("\nurl: \(url)")
-            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 6)
+//            print("\nurl: \(url)")
+            var request = URLRequest(url: url)
             request.httpMethod = "GET"
             
 //            let start = DispatchTime.now()
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await self.session.data(for: request)
 //            let end = DispatchTime.now()
-//
+////
 //            let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds
 //            let timeInterval = Double(nanoTime) / 1_000_000_000
 
 //            print("sec: \(timeInterval) seconds")
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response")
+                aBadThingHappened("Invalid response")
                 return
             }
             
@@ -94,14 +98,14 @@ public class ShapeSubscription{
             }
 
             let headers = httpResponse.allHeaderFields
-            print("status: \(httpResponse.statusCode)")
+//            print("status: \(httpResponse.statusCode)")
             if httpResponse.statusCode == 409 {
 //                print("conflict reading Location")
                 if let location = headers["Location"] as? String{
                     if let urlComponent = URLComponents(string: location) {
                         let queryItems = urlComponent.queryItems
                         if let newHandle = queryItems?.first(where: { $0.name == "handle" })?.value{
-                            refetch(newHandle: newHandle)
+                            await refetch(newHandle: newHandle)
                         }
                     }
                 }
@@ -109,7 +113,7 @@ public class ShapeSubscription{
             }
 
             if httpResponse.statusCode > 204 {
-                print("Error: \(httpResponse.statusCode)")
+                aBadThingHappened("HTTP Error: \(httpResponse.statusCode)")
                 return
             }
 
@@ -135,11 +139,7 @@ public class ShapeSubscription{
 
                 if headers[CTRL_HEADER.UP_TO_DATE] != nil {
                     live = true
-                    Task {
-                        await MainActor.run { [weak self] in
-                            self?.forwardOperations()
-                        }
-                    }
+                    await forwardOperations()
                 }
             }
         } catch {
@@ -147,10 +147,33 @@ public class ShapeSubscription{
         }
     }
     
-    private func forwardOperations() {
-        subscriber!.update(operations: operations, handle: handle!, offset: offset)
-        operations = []
+    private func forwardOperations() async {
+        
+        let _operations = self.operations
+        let _handle: String = self.handle!
+        let _offset = self.offset
+        self.operations = []
+
+        await MainActor.run { [weak self] in
+            if let stream = self{
+                stream.subscriber!.update(operations: _operations, handle: _handle, offset: _offset)
+            }
+        }
     }
+    
+    private func refetch(newHandle: String) async {
+        handle = newHandle
+        offset = "-1"
+
+        await MainActor.run { [weak self] in
+            if let stream = self{
+                if let sub = stream.subscriber{
+                    sub.reset(newHandle)
+                }
+            }
+        }
+    }
+    
     
     private func buildUrl() -> URL? {
         var components = URLComponents(string: "\(dbUrl)/v1/shape")

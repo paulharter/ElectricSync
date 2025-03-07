@@ -9,13 +9,21 @@ import Foundation
 import SwiftData
 
 
-enum DecodeError: Error {
+public enum DecodeError: Error {
     case runtimeError(String)
 }
 
-protocol ElectricModel: Comparable & Hashable & Identifiable{
+public enum StreamError: Error {
+    case runtimeError(String)
+}
+
+public protocol ElectricModel: Comparable & Hashable & Identifiable{
     init(from: [String: Any]) throws
     mutating func update(from: [String: Any]) throws -> Bool
-    var shapeHashes :  [Int: Int] { get set }
     var id : String { get }
+}
+
+
+public protocol PersistentElectricModel: ElectricModel{
+    var shapeHashes :  [Int: Int] { get set }
 }

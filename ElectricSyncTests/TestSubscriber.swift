@@ -10,7 +10,11 @@ import Foundation
 
 
 
-public class TestSubscriber: ShapeSubscriber{
+public class TestSubscriber: ShapeStreamSubscriber{
+    public func onError(_ error: any Error) {
+        
+    }
+    
 
 
     public var values: [String: [String: Any]] = [:]

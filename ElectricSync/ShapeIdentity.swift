@@ -6,7 +6,7 @@
 //
 
 
-struct SubscriptionIdentity: Hashable {
+struct ShapeIdentity: Hashable {
     
     let dbUrl:String
     let table: String
@@ -18,7 +18,7 @@ struct SubscriptionIdentity: Hashable {
         hasher.combine(whereClause)
     }
     
-    static func ==(lhs: SubscriptionIdentity, rhs: SubscriptionIdentity) -> Bool {
+    static func ==(lhs: ShapeIdentity, rhs: ShapeIdentity) -> Bool {
         if (lhs.whereClause == nil) {
             if (rhs.whereClause == nil) {
                 return lhs.dbUrl == rhs.dbUrl && lhs.table == rhs.table

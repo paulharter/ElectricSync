@@ -34,7 +34,7 @@ class GarbageCollector{
         self.dbFilePaths = paths
     }
     
-    func addType<T: PersistentModel & ElectricModel>(type: T.Type){
+    func addType<T: PersistentModel & PersistentElectricModel>(type: T.Type){
         let entityName = Schema.entityName(for: T.self)
         self.binMen[entityName] =  BinMan<T>()
     }

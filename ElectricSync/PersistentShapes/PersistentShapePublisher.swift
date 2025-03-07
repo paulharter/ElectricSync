@@ -7,37 +7,40 @@
 
 import Foundation
 import SwiftData
+import Combine
 
-protocol AnyShapePublisher: AnyObject { }
+//protocol AnyShapePublisher: AnyObject { }
 
 
 enum PublisherError: Error {
     case runtimeError(String)
 }
 
-class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, ShapeSubscriber, AnyShapePublisher{
+public class PersistentShapePublisher<T: PersistentModel & PersistentElectricModel>: ObservableObject, ShapeStreamSubscriber{
     
-    @Published var items: [T] = []
-    @Published var state: Int = 0
+    @Published public var items: [T] = []
+    @Published public var error: Error?
+    @Published public var state: Int = 0
     var data: [String: T] = [:]
-    private var subscription: ShapeSubscription?
+    private var shapeStream: ShapeStream?
     private var ctx: ModelContext
-    var delegate: ShapePublisherDelegate?
+    var delegate: PersistentShapePublisherDelegate?
     var shapeRecord: ShapeRecord
     
-    init(ctx: ModelContext, hash: Int, dbUrl: String, table: String, whereClause: String? = nil) throws {
+    public init(session: URLSession, ctx: ModelContext, hash: Int, dbUrl: String, table: String, whereClause: String? = nil) throws {
         self.ctx = ctx
         
         let entityName = Schema.entityName(for: T.self)
         
         if let record = getShapeRecord(ctx: ctx, hash: hash, modelName: entityName){
             self.shapeRecord = record
-            self.subscription = ShapeSubscription(subscriber: self,
-                                                  dbUrl: dbUrl,
-                                                  table: table,
-                                                  whereClause: whereClause,
-                                                  handle: self.shapeRecord.handle,
-                                                  offset: self.shapeRecord.offset)
+            self.shapeStream = ShapeStream(session: session,
+                                           subscriber: self,
+                                           dbUrl: dbUrl,
+                                           table: table,
+                                           whereClause: whereClause,
+                                           handle: self.shapeRecord.handle,
+                                           offset: self.shapeRecord.offset)
             self.initialiseFromCache()
             self.shapeRecord.lastUse = Date()
         } else {
@@ -47,7 +50,7 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     
     deinit {
         print("deinit")
-        self.subscription!.pause()
+        self.shapeStream!.pause()
         self.shapeRecord.lastUse = Date()
         do {
             try ctx.save()
@@ -57,11 +60,11 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
     }
     
     func start(){
-        self.subscription!.start()
+        self.shapeStream!.start()
     }
     
     func pause() {
-        self.subscription!.pause()
+        self.shapeStream!.pause()
     }
     
     func getHash() -> Int {
@@ -89,8 +92,10 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
         
         do {
             try ctx.save()
-        } catch let error{
-            print("reset failed \(error)")
+        } catch let err{
+            print("reset failed \(err)")
+            self.error = err
+            self.pause()
         }
     }
     
@@ -103,8 +108,10 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
             for operation in operations{
                 if try applyOperation(operation){ changed = true }
             }
-        } catch {
-            //TODO ??
+        } catch let err{
+            print("update failed \(err)")
+            self.error = err
+            self.pause()
         }
         
         if changed {
@@ -119,6 +126,11 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
         if let d = self.delegate{
             d.garbageCollect()
         }
+    }
+    
+    func onError( _ err: Error){
+        self.error = err
+        print("Error from Shape stream: \(err)")
     }
     
     
@@ -136,14 +148,16 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
             values.sort()
             items = values
             state += 1
-        } catch let error{
-            print("initialiseFromCache error \(error)")
+        } catch let err{
+            print("initialiseFromCache error \(err)")
+            self.error = err
+            self.pause() 
         }
     }
     
     private func applyOperation(_ operation: DataChangeOperation) throws -> Bool {
         
-        print("operation: \(operation.operation)")
+//        print("operation: \(operation.operation)")
         
         switch operation.operation{
          case "insert":
@@ -185,7 +199,7 @@ class ShapePublisher<T: PersistentModel & ElectricModel>: ObservableObject, Shap
         if var obj = self.getItem(id: operation.key){
             
             let changed = try obj.update(from: operation.value)
-            print("CHANGED \(changed)")
+//            print("CHANGED \(changed)")
             self.ensureShapeHash(hash: self.shapeRecord.shapeHash, obj: &obj)
             
             if !data.keys.contains(operation.key){

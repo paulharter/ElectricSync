@@ -12,7 +12,7 @@ protocol Collector {
     func empty(shapeHash: Int, ctx: ModelContext)
 }
 
-class BinMan<T: PersistentModel & ElectricModel>: Collector{
+class BinMan<T: PersistentModel & PersistentElectricModel>: Collector{
 
     func empty(shapeHash: Int, ctx: ModelContext){
         

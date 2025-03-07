@@ -11,39 +11,8 @@ import SwiftData
 import CoreData
 
 
-//public extension ModelContext {
-//    // Computed property to access the underlying NSManagedObjectContext
-//    var managedObjectContext: NSManagedObjectContext? {
-//        
-//        guard let managedObjectContext = getMirrorChildValue(of: self.container, childName: "_nsContext") as? NSManagedObjectContext else {
-//            print("failed to get managedObjectContext ")
-//            return nil
-//        }
-//        return managedObjectContext
-//    }
-//
-//    // Computed property to access the NSPersistentStoreCoordinator
-//    var coordinator: NSPersistentStoreCoordinator? {
-//        managedObjectContext?.persistentStoreCoordinator
-//    }
-//}
-//
-//func getMirrorChildValue(of object: Any, childName: String) -> Any? {
-//    
-//    
-//    for child in Mirror(reflecting: object).children{
-//        print("child: \(String(describing: child.label))")
-//    }
-//    
-//    guard let child = Mirror(reflecting: object).children.first(where: { $0.label == childName }) else {
-//        return nil
-//    }
-//
-//    return child.value
-//}
-
 @Model
-class ShapeRecord{
+public class ShapeRecord{
     var modelName: String
     var handle: String?
     var offset: String

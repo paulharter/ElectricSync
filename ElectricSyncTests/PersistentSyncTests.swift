@@ -30,193 +30,18 @@ extension Task where Failure == Error {
 }
 
 
-final class ElectricSyncTests: XCTestCase {
+final class PersistentSyncTests: BasePGTests {
     
-    private var connection: PostgresClientKit.Connection?
-    
-
-    override func setUpWithError() throws {
-        var configuration = PostgresClientKit.ConnectionConfiguration()
-        configuration.host = "localhost"
-        configuration.port = 54321
-        configuration.database = "electric"
-        configuration.user = "postgres"
-        configuration.ssl = false
-        configuration.credential = .scramSHA256(password: "password")
-        
-        do {
-            connection = try PostgresClientKit.Connection(configuration: configuration)
-            setUpStuff(connection!)
-        } catch {
-            print("connection failed")
-            print(error)
-        }
-    }
-    
-    func setUpStuff(_ connection: PostgresClientKit.Connection) {
-        setUpTables(connection)
-        
-        let projectsCount = checkProjects(connection)
-        
-
-        clearProjects(connection)
-        addSomeProjects(connection)
-        
-        
-    }
-    
-    func setUpTables(_ connection: PostgresClientKit.Connection) {
-        do {
-            let text = "CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, name varchar(255));"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-
-            let cursor = try statement.execute()
-            cursor.close()
-        } catch {
-            print("setUpTables failed")
-            print(error)
-        }
-    }
-    
-    
-    func addSomeProjects(_ connection: PostgresClientKit.Connection) {
-        do {
-            let text = "INSERT INTO projects (name) VALUES ($1)"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-
-            var cursor = try statement.execute(parameterValues: [ "Able" ])
-            cursor = try statement.execute(parameterValues: [ "Baker" ])
-            cursor = try statement.execute(parameterValues: [ "Charlie" ])
-            cursor.close()
-            print("addSomeProjects")
-        } catch {
-            print("addSomeProjects failed")
-            print(error)
-        }
-    }
-    
-    func addOneMoreProject(_ connection: PostgresClientKit.Connection) {
-        do {
-            let text = "INSERT INTO projects (name) VALUES ($1)"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-
-            var cursor = try statement.execute(parameterValues: [ "Easy" ])
-
-            cursor.close()
-            print("addOneMoreProject")
-        } catch {
-            print("addOneMoreProject failed")
-            print(error)
-        }
-    }
-    
-    
-    func changeAProject(_ connection: PostgresClientKit.Connection) {
-        do {
-            let text = "UPDATE projects SET name = $1 WHERE name = 'Able'"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-
-            var cursor = try statement.execute(parameterValues: [ "Dog" ])
-            cursor.close()
-            print("changeAProject done")
-        } catch {
-            print("changeAProject failed")
-            print(error)
-        }
-    }
-    
-    func checkProjects(_ connection: PostgresClientKit.Connection) -> Int {
-        do {
-            let text = "SELECT * FROM projects"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-            let cursor = try statement.execute()
-            defer { cursor.close() }
-            
-            var counter: Int = 0
-            
-            for _ in cursor {
-                    counter += 1
-            }
-            return counter
-        } catch {
-            print("checkProjects failed")
-            print(error)
-        }
-        return 0
-    }
-    
-    func clearProjects(_ connection: PostgresClientKit.Connection){
-        do {
-            let text = "TRUNCATE TABLE projects"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-            let cursor = try statement.execute()
-            cursor.close()
-        } catch {
-            print("clearProjects failed")
-            print(error)
-        }
-    }
-
-    
-    func tearDownTables(_ connection: PostgresClientKit.Connection) {
-        do {
-            let text = "DROP TABLE projects;"
-            let statement = try connection.prepareStatement(text: text)
-            defer { statement.close() }
-
-            let cursor = try statement.execute()
-            cursor.close()
-        } catch {
-            print("tearDownTables failed")
-            print(error)
-        }
-    }
-    
-    func deleteShape(handle: String) {
-        
-        var components = URLComponents(string: "http://localhost:3000/v1/shape")
-        components?.queryItems = [ URLQueryItem(name: "handle", value: handle)]
-
-        var request = URLRequest(url: components!.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
-        request.httpMethod = "DELETE"
-        
-        let request2 = request
-
-        Task.synchronous {
-            let (data, response) = try await URLSession.shared.data(for: request2)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response")
-                return
-            }
-
-//            let headers = httpResponse.allHeaderFields
-            print("status: \(httpResponse.statusCode)")
-            if httpResponse.statusCode == 202 {
-                    print("shape deleted sucessfully")
-            }
-        }
-
-    }
-    
- 
-
-    override func tearDownWithError() throws {
-
-        guard let c = connection else { return }
-//        tearDownTables(c)
-        c.close()
-    }
 
     func testSubscriptionGetsValues() async throws{
 
         let subscriber = TestSubscriber()
-        let subscription = ShapeSubscription(subscriber: subscriber, dbUrl: "http://localhost:3000", table: "projects")
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 25.0
+        config.waitsForConnectivity = true
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        var session = URLSession(configuration: config)
+        let subscription = ShapeStream(session: session, subscriber: subscriber, dbUrl: "http://localhost:3000", table: "projects")
         
         let operationCounter = subscriber.counter
         subscription.start()
@@ -231,6 +56,7 @@ final class ElectricSyncTests: XCTestCase {
 
         let expected: Set = ["Able", "Baker", "Charlie"]
         defer { deleteShape(handle: subscription.handle!)}
+        print("names \(names)")
         XCTAssertTrue(names == expected)
     }
     
@@ -246,10 +72,10 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
         var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()
         }
@@ -286,13 +112,13 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
         let expectation3 = XCTestExpectation(description: "get some projects2")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
-        let publisher2 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
-        let publisher3 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher2 : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher3 : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
         var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()
         }
@@ -332,10 +158,10 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
         
 //        var subscription : AnyCancellable
 //        
@@ -360,13 +186,13 @@ final class ElectricSyncTests: XCTestCase {
         let expectation2 = XCTestExpectation(description: "changes")
         
         var subscription2 = publisher.objectWillChange.sink { _ in
+            print("got a change")
             expectation2.fulfill()
         }
         
         changeAProject(connection!)
-        deleteShape(handle: publisher.getHandle()) 
 
-        await fulfillment(of: [expectation2], timeout: 10.0, enforceOrder: false)
+        await fulfillment(of: [expectation2], timeout: 20.0, enforceOrder: false)
 
         
         var names2 = Set<String>()
@@ -376,6 +202,7 @@ final class ElectricSyncTests: XCTestCase {
         let expected2: Set = ["Baker", "Charlie", "Dog"]
 
         XCTAssertTrue(names2 == expected2)
+       deleteShape(handle: publisher.getHandle())
         
     }
 
@@ -390,14 +217,14 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
         let expectation2 = XCTestExpectation(description: "get some projects")
         let expectation3 = XCTestExpectation(description: "get some projects")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
-        let publisher2 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Baker'")
-        let publisher3 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher2 : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Baker'")
+        let publisher3 : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
         
         var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()
@@ -432,7 +259,7 @@ final class ElectricSyncTests: XCTestCase {
     }
     
     
-    func assertPublisherNames(publisher: ShapePublisher<TestProject>, expectedNames: Set<String>){
+    func assertPublisherNames(publisher: PersistentShapePublisher<TestProject>, expectedNames: Set<String>){
         
         var names = Set<String>()
         for project in publisher.items {
@@ -475,14 +302,14 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
         let expectation2 = XCTestExpectation(description: "get some projects")
         let expectation3 = XCTestExpectation(description: "get some projects")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
-        let publisher2 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Baker'")
-        let publisher3 : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher2 : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Baker'")
+        let publisher3 : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects", whereClause: "name='Able'")
         
         var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()
@@ -541,10 +368,10 @@ final class ElectricSyncTests: XCTestCase {
         )
         
         let context = container.mainContext
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
 
         var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()
@@ -584,10 +411,10 @@ final class ElectricSyncTests: XCTestCase {
                print("swiftdata db at \(url.absoluteString)")
            }
         
-        let shapeManager = ShapeManager(ctx: context, dbUrl: "http://localhost:3000")
+        let shapeManager = PersistentShapeManager(ctx: context, dbUrl: "http://localhost:3000")
 
         let expectation = XCTestExpectation(description: "get some projects")
-        var publisher : ShapePublisher<TestProject>? = try shapeManager.publisher(table: "projects")
+        var publisher : PersistentShapePublisher<TestProject>? = try shapeManager.publisher(table: "projects")
 
         var subscription = publisher!.objectWillChange.sink { _ in
             expectation.fulfill()
@@ -601,9 +428,15 @@ final class ElectricSyncTests: XCTestCase {
         
         publisher = nil
 
-        let subscriptionHash: Int = SubscriptionIdentity(dbUrl: "http://localhost:3000", table: "projects", whereClause: nil).hashValue
+        let subscriptionHash: Int = ShapeIdentity(dbUrl: "http://localhost:3000", table: "projects", whereClause: nil).hashValue
+        
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 25.0
+        config.waitsForConnectivity = true
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        var session = URLSession(configuration: config)
 
-        let publisher2 = try ShapePublisher<TestProject>(ctx: context, hash: subscriptionHash, dbUrl: "http://localhost:3000", table: "projects", whereClause: nil)
+        let publisher2 = try PersistentShapePublisher<TestProject>(session: session, ctx: context, hash: subscriptionHash, dbUrl: "http://localhost:3000", table: "projects", whereClause: nil)
         
         XCTAssertEqual(publisher2.items.count, 3)
         do {deleteShape(handle: shapeHandle)}
@@ -629,7 +462,7 @@ final class ElectricSyncTests: XCTestCase {
         
         let context = container.mainContext
         
-        let shapeManager = ShapeManager(for: TestProject.self,
+        let shapeManager = PersistentShapeManager(for: TestProject.self,
                                         context: context,
                                         dbUrl: "http://localhost:3000",
                                         bytesLimit: 234000,
@@ -643,7 +476,7 @@ final class ElectricSyncTests: XCTestCase {
         XCTAssertTrue(sizeBefore < 120000)
                                 
         let expectation = XCTestExpectation(description: "get some projects")
-        let publisher : ShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
+        let publisher : PersistentShapePublisher<TestProject> = try shapeManager.publisher(table: "projects")
 
         var subscription = publisher.objectWillChange.sink { _ in
             expectation.fulfill()

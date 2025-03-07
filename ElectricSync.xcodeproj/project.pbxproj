@@ -11,6 +11,8 @@
 		DA4C4B8D2D417C2800A83335 /* Echo in Frameworks */ = {isa = PBXBuildFile; productRef = DA4C4B8C2D417C2800A83335 /* Echo */; };
 		DAB6DA242CF4878400A341A9 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = DAB6DA232CF4878400A341A9 /* README.md */; };
 		DAC5BE322CE3A38600E23BE0 /* ElectricSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DAC5BE272CE3A38500E23BE0 /* ElectricSync.framework */; };
+		DAF80D512D7B28CD009203EB /* ephemeral.md in Resources */ = {isa = PBXBuildFile; fileRef = DAF80D502D7B28BF009203EB /* ephemeral.md */; };
+		DAF80D552D7B2BAB009203EB /* persistent.md in Resources */ = {isa = PBXBuildFile; fileRef = DAF80D542D7B2B9D009203EB /* persistent.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,6 +29,8 @@
 		DAB6DA232CF4878400A341A9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		DAC5BE272CE3A38500E23BE0 /* ElectricSync.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ElectricSync.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAC5BE312CE3A38600E23BE0 /* ElectricSyncTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ElectricSyncTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DAF80D502D7B28BF009203EB /* ephemeral.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ephemeral.md; sourceTree = "<group>"; };
+		DAF80D542D7B2B9D009203EB /* persistent.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = persistent.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -79,6 +83,8 @@
 		DAC5BE1D2CE3A38500E23BE0 = {
 			isa = PBXGroup;
 			children = (
+				DAF80D542D7B2B9D009203EB /* persistent.md */,
+				DAF80D502D7B28BF009203EB /* ephemeral.md */,
 				DAB6DA232CF4878400A341A9 /* README.md */,
 				DAC5BE292CE3A38500E23BE0 /* ElectricSync */,
 				DAC5BE352CE3A38600E23BE0 /* ElectricSyncTests */,
@@ -203,6 +209,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DAF80D552D7B2BAB009203EB /* persistent.md in Resources */,
+				DAF80D512D7B28CD009203EB /* ephemeral.md in Resources */,
 				DAB6DA242CF4878400A341A9 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1,29 +1,26 @@
 //
-//  TestProjectObject.swift
+//  TestProject2.swift
 //  ElectricSync
 //
-//  Created by Paul Harter on 05/12/2024.
+//  Created by Paul Harter on 06/03/2025.
 //
 
 import Foundation
-import SwiftData
 @testable import ElectricSync
 
-@Model
-class TestProject: PersistentElectricModel{
+struct TestProject2: ElectricModel{
 
     var id: String
     var name: String
-    var shapeHashes: [Int: Int] = [:]
     
-    required init(from: [String: Any]) throws {
+    init(from: [String: Any]) throws {
         guard let id = from["id"] as? String else { throw DecodeError.runtimeError("id is missing")}
         guard let name = from["name"] as? String else { throw DecodeError.runtimeError("name is missing")}
         self.id = id
         self.name = name
     }
 
-    func update(from: [String: Any]) throws -> Bool {
+    mutating func update(from: [String: Any]) throws -> Bool {
         var changed = false
         if let name = from["name"] as? String {
             if self.name != name {
@@ -35,7 +32,7 @@ class TestProject: PersistentElectricModel{
     }
     
     // Comparable
-    static func <(lhs: TestProject, rhs: TestProject) -> Bool {
+    static func <(lhs: TestProject2, rhs: TestProject2) -> Bool {
             return lhs.name < rhs.name
     }
 }
