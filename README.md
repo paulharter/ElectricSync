@@ -2,7 +2,54 @@
 
 A Swift client for ElectricSQL
 
-You can subscribe to Shapes from ElectricSQL using ElectricSync's ShapePublishers.
+You can use this library to subscribe to Shapes from ElectricSQL and use them in your SwiftUI projects.
+
+## Requirements
+
+Build your project with xcode as ElectricSQL uses Apple's SwiftData for persistence and xcode will pull in the libs and macros.
+
+OS versions:
+- iOS 18.0+
+- MacOS 15.0+
+
+## Installation
+
+In your project's menu go to `File > Add Package Dependencies...` the paste `https://github.com/paulharter/ElectricSync` into the search box.
+When it has found this package press `Add Package`
+
+## Usage
+
+Import ElectricSync into your code:
+
+```swift
+import ElectricSync
+```
+
+Create a shape manager to connect to ElectricSQL
+
+```swift
+let shapeManager = EphemeralShapeManager(dbUrl: "http://127.0.0.1:3000")
+```
+
+Then for each shape you want create a publisher, optionally with `where` and/or `sort`:
+
+```
+let projectsPublisher = shapeManager.publisher(table: "projects", where: "status='active'", sort:  { one, two in
+            return one.name > two.name
+        })
+```
+
+Then use this publisher in your views
+
+```
+List {
+    ForEach(projectsPublisher.items) { project in
+        Text(project.name)
+    }
+}
+```
+
+## Ephemeral and persistent shapes
 
 There are two flavours of `ShapePublisher` that both read from a `ShapeStream`
 
@@ -27,7 +74,7 @@ The `PersistentShapePublisher` has the same in memory array but also saves it in
 
 The `PersistentShapePublisher` also has a garbage collector that cleans up old unused shapes.
 
-## Usage
+## Detailed Usage
 
 [How to use ephemeral shapes](./Docs/ephemeral.md)
 
