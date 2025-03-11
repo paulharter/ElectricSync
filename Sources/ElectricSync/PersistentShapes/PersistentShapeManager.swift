@@ -19,7 +19,7 @@ struct WeakBox<ItemType: AnyObject> {
 }
 
 
-protocol PersistentShapePublisherDelegate {
+public protocol PersistentShapePublisherDelegate {
     func garbageCollect()
 }
 
@@ -63,7 +63,9 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
         }
     }
     
-    public func publisher<T: PersistentModel & PersistentElectricModel >(table: String, whereClause: String? = nil) throws -> PersistentShapePublisher<T> {
+    @MainActor public func publisher<T: PersistentModel & PersistentElectricModel >(table: String,
+                                                                                    whereClause: String? = nil,
+                                                                                    sort: ((T, T) throws -> Bool)? = nil) throws -> PersistentShapePublisher<T> {
         
         let shapeHash: Int = ShapeIdentity(dbUrl: self.dbUrl, table: table, whereClause: whereClause).hashValue
   
@@ -79,15 +81,15 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
                                                         hash: shapeHash,
                                                         dbUrl: dbUrl,
                                                         table: table,
-                                                        whereClause: whereClause)
+                                                        whereClause: whereClause,
+                                                        sort: sort,
+                                                        delegate: self)
         
         publishers[shapeHash] = WeakBox(item:publisher)
-        publisher.delegate = self
-        publisher.start()
         return publisher
     }
     
-    func garbageCollect(){
+    public func garbageCollect(){
         // roughly every 10 minutes while being used
         let now = Date.now
         if now > self.lastGarbageCollection + TimeInterval(60 * 10){

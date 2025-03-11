@@ -7,9 +7,9 @@
 
 import Foundation
 
-var OperationNames : Set = ["insert", "update", "delete"]
+let OperationNames : Set = ["insert", "update", "delete"]
 
-public class DataChangeOperation: NSObject{
+public struct DataChangeOperation: @unchecked Sendable{
     
     public let table: String
     public let key: String
@@ -21,10 +21,9 @@ public class DataChangeOperation: NSObject{
         self.key = String(key.replacingOccurrences(of: "\"", with: "").split(separator: "/").last!)
         self.value = value
         self.operation = operation
-        super.init()
     }
     
-    convenience init?(table: String, message: [String: Any]){
+    init?(table: String, message: [String: Any]){
 
         guard let headers = message["headers"] as? [String: Any],
               let operation = headers["operation"] as? String,

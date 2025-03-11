@@ -7,8 +7,10 @@
 
 import Foundation
 
-protocol ShapeStreamSubscriber: AnyObject {
+@MainActor
+protocol ShapeStreamSubscriber: AnyObject, Sendable {
     func update(operations: [DataChangeOperation], handle: String, offset: String)
     func reset( _ handle: String)
     func onError( _ error: Error)
 }
+

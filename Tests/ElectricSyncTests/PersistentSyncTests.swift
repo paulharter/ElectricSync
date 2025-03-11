@@ -33,7 +33,7 @@ extension Task where Failure == Error {
 final class PersistentSyncTests: BasePGTests {
     
 
-    func testSubscriptionGetsValues() async throws{
+    @MainActor func testSubscriptionGetsValues() async throws{
 
         let subscriber = TestSubscriber()
         let config = URLSessionConfiguration.default
@@ -41,12 +41,18 @@ final class PersistentSyncTests: BasePGTests {
         config.waitsForConnectivity = true
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         var session = URLSession(configuration: config)
-        let subscription = ShapeStream(session: session, subscriber: subscriber, dbUrl: "http://localhost:3000", table: "projects")
         
+        
+        let stream = ShapeStream(session: session,
+                                 subscriber: subscriber,
+                                 dbUrl: "http://localhost:3000",
+                                 table: "projects")
         let operationCounter = subscriber.counter
-        subscription.start()
+        Task {
+            await stream.start()
+        }
         try await subscriber.waitForNextUpdate(operationCounter)
-        subscription.pause()
+        stream.stop()
         
         var names = Set<String>()
         
@@ -55,7 +61,7 @@ final class PersistentSyncTests: BasePGTests {
         }
 
         let expected: Set = ["Able", "Baker", "Charlie"]
-        defer { deleteShape(handle: subscription.handle!)}
+        defer { deleteShape(handle: stream.handle!)}
         print("names \(names)")
         XCTAssertTrue(names == expected)
     }
@@ -251,6 +257,9 @@ final class PersistentSyncTests: BasePGTests {
         assertPublisherNames(publisher: publisher2, expectedNames: ["Baker"])
         assertPublisherNames(publisher: publisher3, expectedNames: ["Able"])
         
+        
+        
+        
         assertShapeIDsForName(context: context, name: "Able", shapeHashes: [publisher.getHash(), publisher3.getHash()])
         assertShapeIDsForName(context: context, name: "Baker", shapeHashes: [publisher.getHash(), publisher2.getHash()])
         assertShapeIDsForName(context: context, name: "Charlie", shapeHashes: [publisher.getHash()])
@@ -261,7 +270,7 @@ final class PersistentSyncTests: BasePGTests {
     }
     
     
-    func assertPublisherNames(publisher: PersistentShapePublisher<TestProject>, expectedNames: Set<String>){
+    @MainActor func assertPublisherNames(publisher: PersistentShapePublisher<TestProject>, expectedNames: Set<String>){
         
         var names = Set<String>()
         for project in publisher.items {
@@ -327,13 +336,6 @@ final class PersistentSyncTests: BasePGTests {
         
         // have got all three subscriptions
          await fulfillment(of: [expectation, expectation2, expectation3], timeout: 4.0, enforceOrder: false)
-        
-        
-        
-        // pause them all
-        publisher.pause()
-        publisher2.pause()
-        publisher3.pause()
     
 
         assertPublisherNames(publisher: publisher, expectedNames: ["Able", "Baker", "Charlie"])

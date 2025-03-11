@@ -70,9 +70,3 @@ func getOldestShapeRecord(ctx: ModelContext) -> ShapeRecord?{
         return nil
     }
 }
-
-
-
-
-
-
