@@ -14,7 +14,10 @@ OS versions:
 
 ## Installation
 
-In your project's menu go to `File > Add Package Dependencies...` the paste `https://github.com/paulharter/ElectricSync` into the search box.
+In your project's menu go to `File > Add Package Dependencies...` 
+
+Paste `https://github.com/paulharter/ElectricSync` into the search box.
+
 When it has found this package press `Add Package`
 
 ## Usage
