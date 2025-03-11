@@ -29,9 +29,9 @@ The `PersistentShapePublisher` also has a garbage collector that cleans up old u
 
 ## Usage
 
-[How to use ephemeral shapes](./ephemeral.md)
+[How to use ephemeral shapes](./Docs/ephemeral.md)
 
-[How to use persistent shapes](./persistent.md)
+[How to use persistent shapes](./Docs/persistent.md)
 
 
 
