@@ -73,7 +73,7 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
 }
 ```
 
-The `PersistentShapePublisher` has the same in memory array but also saves it into SwiftData and keeps track of the Shape's offset so that it can resume from where it left off without relaoding the data and gives you offline reading of the data.
+The `PersistentShapePublisher` has the same in memory array but also saves it into SwiftData and keeps track of the Shape's offset so that it can resume from where it left off without reloading the data and gives you offline reading of the data.
 
 The `PersistentShapePublisher` also has a garbage collector that cleans up old unused shapes.
 
