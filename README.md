@@ -6,7 +6,7 @@ You can use this library to subscribe to Shapes from ElectricSQL and use them in
 
 ## Requirements
 
-Build your project with xcode as ElectricSQL uses Apple's SwiftData for persistence and xcode will pull in the libs and macros.
+Build your project with xcode as ElectricSync uses Apple's SwiftData for persistence and xcode will pull in the libs and macros.
 
 OS versions:
 - iOS 18.0+
