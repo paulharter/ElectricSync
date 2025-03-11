@@ -37,7 +37,7 @@ let shapeManager = EphemeralShapeManager(dbUrl: "http://127.0.0.1:3000")
 Then for each shape you want create a publisher, optionally with `where` and/or `sort`:
 
 ```
-let projectsPublisher = shapeManager.publisher(table: "projects", where: "status='active'", sort:  { one, two in
+let projectsPublisher: EphemeralShapePublisher<Project> = shapeManager.publisher(table: "projects", where: "status='active'", sort:  { one, two in
             return one.name > two.name
         })
 ```
