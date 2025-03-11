@@ -179,7 +179,7 @@ class BasePGTests: XCTestCase {
             }
             
             //            let headers = httpResponse.allHeaderFields
-            print("status: \(httpResponse.statusCode)")
+            print("status xx: \(httpResponse.statusCode)")
             if httpResponse.statusCode == 202 {
                 print("shape deleted sucessfully")
             }

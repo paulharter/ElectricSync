@@ -6,6 +6,7 @@
 //
 
 import SwiftData
+import Foundation
 
 class GarbageCollector{
     

@@ -22,7 +22,6 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
     @Published public var error: Error?
     @Published public var state: Int = 0
     var data: [String: T] = [:]
-    private var shapeStream: ShapeStream?
     private var ctx: ModelContext
     var delegate: PersistentShapePublisherDelegate?
     var shapeRecord: ShapeRecord
@@ -34,22 +33,30 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
                 dbUrl: String,
                 table: String,
                 whereClause: String? = nil,
-                sort: ((T, T) throws -> Bool)? = nil) throws {
+                sort: ((T, T) throws -> Bool)? = nil,
+                delegate: PersistentShapePublisherDelegate?=nil) throws {
         self.ctx = ctx
         self.sort = sort
+        self.delegate = delegate
         
         let entityName = Schema.entityName(for: T.self)
         
         if let record = getShapeRecord(ctx: ctx, hash: hash, modelName: entityName){
+            
+            
             self.shapeRecord = record
-            self.shapeStream = ShapeStream(session: session,
-                                           subscriber: self,
-                                           dbUrl: dbUrl,
-                                           table: table,
-                                           whereClause: whereClause,
-                                           handle: self.shapeRecord.handle,
-                                           offset: self.shapeRecord.offset)
             self.initialiseFromCache()
+
+            weak var weakSelf = self
+            
+            startShapeStream(session: session,
+                             subscriber: weakSelf,
+                             dbUrl: dbUrl,
+                             table: table,
+                             whereClause: whereClause,
+                             handle: self.shapeRecord.handle,
+                             offset: self.shapeRecord.offset)
+            
             self.shapeRecord.lastUse = Date()
         } else {
             throw PublisherError.runtimeError("no Shape Record")
@@ -57,23 +64,9 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
     }
     
     deinit {
-        print("deinit")
-        self.shapeStream!.pause()
-        self.shapeRecord.lastUse = Date()
-        do {
-            try ctx.save()
-        } catch let error {
-            print("deinit save failed \(error)")
-        }
+        print("deinit PersistentShapePublisher")
     }
     
-    func start(){
-        self.shapeStream!.start()
-    }
-    
-    func pause() {
-        self.shapeStream!.pause()
-    }
     
     func getHash() -> Int {
         return self.shapeRecord.shapeHash
@@ -103,7 +96,6 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         } catch let err{
             print("reset failed \(err)")
             self.error = err
-            self.pause()
         }
     }
     
@@ -119,7 +111,6 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         } catch let err{
             print("update failed \(err)")
             self.error = err
-            self.pause()
         }
         
         if changed {
@@ -140,6 +131,14 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         
         self.shapeRecord.handle = handle
         self.shapeRecord.offset = offset
+        self.shapeRecord.lastUse = Date()
+        do {
+            try ctx.save()
+        } catch let err{
+            print("reset failed \(err)")
+            self.error = err
+        }
+        
         if let d = self.delegate{
             d.garbageCollect()
         }
@@ -155,7 +154,7 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         let query = FetchDescriptor<T>()
 
         do {
-            var objs = try self.ctx.fetch(query)
+            let objs = try self.ctx.fetch(query)
             for obj in objs {
                 if obj.shapeHashes.keys.contains(self.shapeRecord.shapeHash){
                     self.data[obj.id] = obj
@@ -176,7 +175,6 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         } catch let err{
             print("initialiseFromCache error \(err)")
             self.error = err
-            self.pause() 
         }
     }
     
@@ -242,7 +240,6 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         }
     }
     
-    
     private func remove(_ obj: inout T){
         data.removeValue(forKey: obj.id)
         obj.shapeHashes.removeValue(forKey: self.shapeRecord.shapeHash)
@@ -252,9 +249,9 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
         }
     }
     
-    
     private func ensureShapeHash(hash: Int, obj: inout T){
        obj.shapeHashes[hash] = 1
 
     }
 }
+

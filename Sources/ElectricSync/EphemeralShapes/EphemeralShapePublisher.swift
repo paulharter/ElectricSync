@@ -14,30 +14,32 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
     @Published public var error: Error?
     var data: [String: T] = [:]
     private let subId: String = NSUUID().uuidString
-    private var shapeStream: ShapeStream?
+//    private var shapeStream: ShapeStream?
     private var handle: String = ""
     private var sort: ((T, T) throws -> Bool)?
+    private var active: Bool
+    public var shapeHash: Int
     
-    init(session: URLSession, dbUrl: String, table: String, whereClause: String? = nil, sort: ((T, T) throws -> Bool)? = nil) {
-        self.shapeStream = ShapeStream(session: session,
-                                       subscriber: self,
+    init(shapeHash: Int, session: URLSession, dbUrl: String, table: String, whereClause: String? = nil, sort: ((T, T) throws -> Bool)? = nil) {
+        
+        self.sort = sort
+        self.active = true
+        self.shapeHash = shapeHash
+        weak var weakSelf = self
+        
+        startShapeStream(session: session,
+                                       subscriber: weakSelf,
                                        dbUrl: dbUrl,
                                        table: table,
                                        whereClause: whereClause)
-        self.sort = sort
+        
     }
+    
     
     deinit {
-        self.shapeStream!.pause()
+        print("deinit EphemeralShapePublisher")
     }
     
-    func start(){
-        self.shapeStream!.start()
-    }
-    
-    func pause() {
-        self.shapeStream!.pause()
-    }
     
     func getHandle() -> String {
         return self.handle
@@ -63,12 +65,14 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
             let values = Array(data.values)
             if let s = self.sort {
                 do {
+                    print("sorting")
                     items = try values.sorted(by: s)
                 } catch let err{
                     print("sort failed \(err)")
                     items = values
                 }
             } else {
+                print("not sorting")
                 items = values
             }
         }

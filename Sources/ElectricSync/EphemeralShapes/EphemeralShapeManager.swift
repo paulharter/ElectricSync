@@ -5,6 +5,7 @@
 //  Created by Paul Harter on 06/03/2025.
 //
 
+import Foundation
 import Combine
 
 public class EphemeralShapeManager: ObservableObject{
@@ -23,7 +24,7 @@ public class EphemeralShapeManager: ObservableObject{
         self.session = URLSession(configuration: config)
     }
     
-    public func publisher<T: ElectricModel >(table: String,
+    @MainActor public func publisher<T: ElectricModel >(table: String,
                                              whereClause: String? = nil,
                                              sort: ((T, T) throws -> Bool)? = nil) -> EphemeralShapePublisher<T> {
         
@@ -36,10 +37,19 @@ public class EphemeralShapeManager: ObservableObject{
             }
         }
 
-        let publisher = EphemeralShapePublisher<T>(session: self.session, dbUrl: dbUrl, table: table, whereClause: whereClause)
+        let publisher = EphemeralShapePublisher<T>(shapeHash: shapeHash, session: self.session, dbUrl: dbUrl, table: table, whereClause: whereClause, sort: sort)
         
         publishers[shapeHash] = WeakBox(item:publisher)
-        publisher.start()
         return publisher
+    }
+    
+    
+    public func publisherForShapeHash<T>(shapeHash: Int) ->EphemeralShapePublisher<T>?{
+        let box = publishers[shapeHash]
+        if let item = box?.item {
+            return (item as! EphemeralShapePublisher<T>)
+        } else {
+            return nil
+        }
     }
 }
