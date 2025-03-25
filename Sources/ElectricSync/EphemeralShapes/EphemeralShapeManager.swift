@@ -11,17 +11,21 @@ import Combine
 public class EphemeralShapeManager: ObservableObject{
     
     private var dbUrl: String
+    private var sourceId: String?
+    private var sourceSecret: String?
     private var publishers: [Int: WeakBox<AnyObject>] = [:]
     private var session: URLSession
     
     
-    public init(dbUrl: String) {
+    public init(dbUrl: String, sourceId: String? = nil, sourceSecret: String? = nil) {
         self.dbUrl = dbUrl
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 25.0
         config.waitsForConnectivity = true
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         self.session = URLSession(configuration: config)
+        self.sourceId = sourceId
+        self.sourceSecret = sourceSecret
     }
     
     @MainActor public func publisher<T: ElectricModel >(table: String,
@@ -37,7 +41,14 @@ public class EphemeralShapeManager: ObservableObject{
             }
         }
 
-        let publisher = EphemeralShapePublisher<T>(shapeHash: shapeHash, session: self.session, dbUrl: dbUrl, table: table, whereClause: whereClause, sort: sort)
+        let publisher = EphemeralShapePublisher<T>(shapeHash: shapeHash,
+                                                   session: self.session,
+                                                   dbUrl: dbUrl,
+                                                   table: table,
+                                                   whereClause: whereClause,
+                                                   sourceId: self.sourceId,
+                                                   sourceSecret: self.sourceSecret,
+                                                   sort: sort)
         
         publishers[shapeHash] = WeakBox(item:publisher)
         return publisher

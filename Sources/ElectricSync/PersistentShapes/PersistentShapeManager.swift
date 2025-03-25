@@ -28,6 +28,8 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
     
     private var ctx: ModelContext
     private var dbUrl: String
+    private var sourceId: String?
+    private var sourceSecret: String?
     private var publishers: [Int: WeakBox<AnyObject>] = [:]
     var garbageCollector: GarbageCollector
     private var lastGarbageCollection: Date
@@ -37,9 +39,11 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
 //    private var someTypes: [String: any PersistentModel.Type] = [:]
     
     public init(ctx: ModelContext,
-         dbUrl: String,
-         bytesLimit: UInt64 = UInt64(1024 * 1024 * 500), // 500MB
-         timeLimit: TimeInterval = TimeInterval(60 * 60 * 24 * 7)) // One week
+                dbUrl: String,
+                sourceId: String? = nil,
+                sourceSecret: String? = nil,
+                bytesLimit: UInt64 = UInt64(1024 * 1024 * 500), // 500MB
+                timeLimit: TimeInterval = TimeInterval(60 * 60 * 24 * 7)) // One week
     {
         self.ctx = ctx
         self.dbUrl = dbUrl
@@ -50,6 +54,8 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
         config.waitsForConnectivity = true
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         self.session = URLSession(configuration: config)
+        self.sourceId = sourceId
+        self.sourceSecret = sourceSecret
     }
     
     public convenience init(for forTypes: any (PersistentElectricModel & PersistentModel).Type...,
@@ -82,6 +88,8 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
                                                         dbUrl: dbUrl,
                                                         table: table,
                                                         whereClause: whereClause,
+                                                        sourceId: self.sourceId,
+                                                        sourceSecret: self.sourceSecret,
                                                         sort: sort,
                                                         delegate: self)
         

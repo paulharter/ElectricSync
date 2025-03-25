@@ -33,6 +33,8 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
                 dbUrl: String,
                 table: String,
                 whereClause: String? = nil,
+                sourceId: String? = nil,
+                sourceSecret: String? = nil,
                 sort: ((T, T) throws -> Bool)? = nil,
                 delegate: PersistentShapePublisherDelegate?=nil) throws {
         self.ctx = ctx
@@ -55,7 +57,9 @@ public class PersistentShapePublisher<T: PersistentModel & PersistentElectricMod
                              table: table,
                              whereClause: whereClause,
                              handle: self.shapeRecord.handle,
-                             offset: self.shapeRecord.offset)
+                             offset: self.shapeRecord.offset,
+                             sourceId: sourceId,
+                             sourceSecret: sourceSecret)
             
             self.shapeRecord.lastUse = Date()
         } else {

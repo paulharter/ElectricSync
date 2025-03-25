@@ -20,7 +20,13 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
     private var active: Bool
     public var shapeHash: Int
     
-    init(shapeHash: Int, session: URLSession, dbUrl: String, table: String, whereClause: String? = nil, sort: ((T, T) throws -> Bool)? = nil) {
+    init(shapeHash: Int, session: URLSession,
+         dbUrl: String,
+         table: String,
+         whereClause: String? = nil,
+         sourceId: String? = nil,
+         sourceSecret: String? = nil,
+         sort: ((T, T) throws -> Bool)? = nil) {
         
         self.sort = sort
         self.active = true
@@ -28,10 +34,12 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
         weak var weakSelf = self
         
         startShapeStream(session: session,
-                                       subscriber: weakSelf,
-                                       dbUrl: dbUrl,
-                                       table: table,
-                                       whereClause: whereClause)
+                         subscriber: weakSelf,
+                         dbUrl: dbUrl,
+                         table: table,
+                         whereClause: whereClause,
+                         sourceId: sourceId,
+                         sourceSecret: sourceSecret)
         
     }
     

@@ -41,7 +41,6 @@ class BasePGTests: XCTestCase {
         
         let projectsCount = checkProjects(connection)
         
-        
         clearProjects(connection)
         addSomeProjects(connection)
         

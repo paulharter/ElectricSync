@@ -21,7 +21,9 @@ func startShapeStream(session: URLSession,
                       table: String,
                       whereClause: String? = nil,
                       handle: String? = nil,
-                      offset: String = "-1") {
+                      offset: String = "-1",
+                      sourceId: String? = nil,
+                      sourceSecret: String? = nil) {
 
     let stream = ShapeStream(session: session,
                              subscriber: subscriber,
@@ -29,7 +31,9 @@ func startShapeStream(session: URLSession,
                              table: table,
                              whereClause: whereClause,
                              handle: handle,
-                             offset: offset)
+                             offset: offset,
+                             sourceId: sourceId,
+                             sourceSecret: sourceSecret)
     
     Task {await stream.start()}
 }
@@ -40,6 +44,9 @@ public class ShapeStream{
     private let dbUrl:String
     private let table: String
     private let whereClause: String?
+    
+    private var sourceId: String?
+    private var sourceSecret: String?
     
     private var offset: String
     public  var handle: String?
@@ -56,7 +63,9 @@ public class ShapeStream{
          table: String,
          whereClause: String? = nil,
          handle: String? = nil,
-         offset: String = "-1") {
+         offset: String = "-1",
+         sourceId: String? = nil,
+         sourceSecret: String? = nil) {
         
         self.table = table
         self.session = session
@@ -65,6 +74,8 @@ public class ShapeStream{
         self.whereClause = whereClause
         self.dbUrl = dbUrl
         self.subscriber = subscriber
+        self.sourceId = sourceId
+        self.sourceSecret = sourceSecret
     }
     
     deinit {
@@ -189,6 +200,14 @@ public class ShapeStream{
 
         if let handle = handle {
             queryItems.append(URLQueryItem(name: "handle", value: handle))
+        }
+        
+        if let source_id = self.sourceId {
+            queryItems.append(URLQueryItem(name: "source_id", value: source_id))
+        }
+        
+        if let source_secret = self.sourceSecret {
+            queryItems.append(URLQueryItem(name: "source_secret", value: source_secret))
         }
 
         if live {
