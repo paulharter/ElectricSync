@@ -59,11 +59,13 @@ public class PersistentShapeManager: ObservableObject, PersistentShapePublisherD
     }
     
     public convenience init(for forTypes: any (PersistentElectricModel & PersistentModel).Type...,
-                     context: ModelContext,
-                     dbUrl: String,
-                     bytesLimit: UInt64 = UInt64(1024 * 1024 * 500),
-                     timeLimit: TimeInterval = TimeInterval(60 * 60 * 24 * 7)) {
-        self.init(ctx: context, dbUrl: dbUrl, bytesLimit: bytesLimit, timeLimit: timeLimit)
+                            context: ModelContext,
+                            dbUrl: String,
+                            sourceId: String? = nil,
+                            sourceSecret: String? = nil,
+                            bytesLimit: UInt64 = UInt64(1024 * 1024 * 500),
+                            timeLimit: TimeInterval = TimeInterval(60 * 60 * 24 * 7)) {
+        self.init(ctx: context, dbUrl: dbUrl, sourceId: sourceId, sourceSecret: sourceSecret, bytesLimit: bytesLimit, timeLimit: timeLimit)
         for type in forTypes{
             self.garbageCollector.addType(type: type)
         }
