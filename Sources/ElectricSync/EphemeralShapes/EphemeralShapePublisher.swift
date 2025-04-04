@@ -123,4 +123,8 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
             return false
          }
     }
+    
+    func itemForKey(_ key: String) -> T? {
+        return data[key]
+    }
 }
