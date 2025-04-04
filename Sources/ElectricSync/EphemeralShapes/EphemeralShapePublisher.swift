@@ -43,6 +43,10 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
         
     }
     
+    public func itemForKey(_ key: String) -> T? {
+        return data[key]
+    }
+    
     
     deinit {
         print("deinit EphemeralShapePublisher")
@@ -124,7 +128,5 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
          }
     }
     
-    func itemForKey(_ key: String) -> T? {
-        return data[key]
-    }
+
 }
