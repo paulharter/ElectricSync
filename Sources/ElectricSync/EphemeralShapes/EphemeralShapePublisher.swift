@@ -12,6 +12,7 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
 
     @Published public var items: [T] = []
     @Published public var error: Error?
+    @Published public var busy: Bool = false
     var data: [String: T] = [:]
     private let subId: String = NSUUID().uuidString
 //    private var shapeStream: ShapeStream?
@@ -31,6 +32,7 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
         self.sort = sort
         self.active = true
         self.shapeHash = shapeHash
+        self.busy = true
         weak var weakSelf = self
         
         startShapeStream(session: session,
@@ -94,6 +96,7 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
                 items = values
             }
         }
+        self.busy = false
 //        print("updated \(items)")
     }
     
