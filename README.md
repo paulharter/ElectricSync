@@ -76,7 +76,7 @@ The `PersistentShapePublisher` has the same in memory array but also saves it in
 
 The `PersistentShapePublisher` also has a garbage collector that cleans up old unused shapes.
 
-NB - There is new demo app that uses the `EphemeralShapePublisher` which works well, at the moment the `PersistentShapePublisher` is a bit slow during initial sync and needs a bit of attention!
+NB - There is [new demo app](https://github.com/paulharter/ElectricLinearLite) that uses the `EphemeralShapePublisher` which works well, at the moment the `PersistentShapePublisher` is a bit slow during initial sync and needs a bit of attention!
 
 ## Detailed Usage
 
