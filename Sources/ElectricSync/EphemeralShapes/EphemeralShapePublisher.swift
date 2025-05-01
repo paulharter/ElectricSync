@@ -125,7 +125,11 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
             }
          case "update":
             guard var obj = data[operation.key] else { return false }
-            return try obj.update(from: operation.value)
+            let changed = try obj.update(from: operation.value)
+            if changed {
+                data[operation.key] = obj
+            }
+            return changed
          case "delete":
             if data.keys.contains(operation.key){
                 data.removeValue(forKey: operation.key)
