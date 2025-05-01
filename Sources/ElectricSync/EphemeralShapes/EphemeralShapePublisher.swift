@@ -51,7 +51,7 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
     
     
     deinit {
-        print("deinit EphemeralShapePublisher")
+        //print("deinit EphemeralShapePublisher")
     }
     
     public func setSortFunction(_ sort: ((T, T) throws -> Bool)?) throws -> Void{
@@ -85,14 +85,14 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
             let values = Array(data.values)
             if let s = self.sort {
                 do {
-                    print("sorting")
+                    //print("sorting")
                     items = try values.sorted(by: s)
                 } catch let err{
-                    print("sort failed \(err)")
+                    //print("sort failed \(err)")
                     items = values
                 }
             } else {
-                print("not sorting")
+                //print("not sorting")
                 items = values
             }
         }
