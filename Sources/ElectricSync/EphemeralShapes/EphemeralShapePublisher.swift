@@ -97,7 +97,7 @@ public class EphemeralShapePublisher<T: ElectricModel >: ObservableObject, Shape
             }
         }
         self.busy = false
-//        print("updated \(items)")
+        print("updated \(items)")
     }
     
     func reset( _ handle: String){
