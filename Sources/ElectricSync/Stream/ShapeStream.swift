@@ -35,7 +35,7 @@ func startShapeStream(session: URLSession,
                              sourceId: sourceId,
                              sourceSecret: sourceSecret)
     
-    Task {await stream.start()}
+    Task.detached { await stream.start() }
 }
 
 
@@ -79,7 +79,7 @@ public class ShapeStream{
     }
     
     deinit {
-        print("deinit ShapeStream2")
+//        print("deinit ShapeStream2")
     }
     
     public func start() async {
