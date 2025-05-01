@@ -35,7 +35,7 @@ func startShapeStream(session: URLSession,
                              sourceId: sourceId,
                              sourceSecret: sourceSecret)
     
-    Task.detached { await stream.start() }
+    Task { await stream.start() }
 }
 
 
